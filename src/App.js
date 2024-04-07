@@ -55,7 +55,7 @@ const App = () => {
       
       // Preprocess the frame
       const tensor = tf.browser.fromPixels(canvas).resizeNearestNeighbor([256, 256]).toFloat().expandDims(0).div(255);
-      tensor.print(); 
+      tensor.norm('euclidean', 0, 1)
      
       
       
