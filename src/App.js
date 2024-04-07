@@ -1,10 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as tf from '@tensorflow/tfjs';
 
+
 const App = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef();
   const wasRendered = useRef(false);
+  const canvas2Ref = useRef();
   const [model, setModel] = useState(null);
 
   useEffect(() => {
@@ -41,6 +43,7 @@ const App = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
+    const canvas2 = canvas2Ref.current;
 
     const drawFrame = () => {
       const videoWidth = video.videoWidth;
@@ -52,9 +55,8 @@ const App = () => {
       
       // Preprocess the frame
       const tensor = tf.browser.fromPixels(canvas).resizeNearestNeighbor([256, 256]).toFloat().expandDims(0).div(255);
-      console.log('Tensor shape:', tensor.shape);
-      console.log('Tensor dtype:', tensor.dtype);
-      console.log('Tensor min:', tensor);
+      tensor.print(); 
+     
       
       
       model.predict(tensor).data().then(predictionData => {
@@ -69,7 +71,10 @@ const App = () => {
           const resizedMask = maskTensor.resizeNearestNeighbor([videoHeight, videoWidth]);
       
           // Remove the singleton dimension after resizing so we can use it for masking
-          const mask2d = resizedMask.squeeze();
+          let mask2d = resizedMask.squeeze();
+          mask2d = mask2d.greater(0.5).cast('float32');
+          // mask2d.print();
+
       
           // Create a blue mask with opacity
           const blueMask = tf.tidy(() => {
@@ -79,14 +84,16 @@ const App = () => {
             const alphaChannel = mask2d.mul(127).add(128); // Adjust opacity
             return tf.stack([zeros, zeros, blueChannel, alphaChannel], -1);
           });
+          // blueMask.print();
       
           // Convert to uint8 since toPixels expects integers
           const blueMaskUint8 = blueMask.cast('int32');
       
           // Overlay the mask on the canvas
-          tf.browser.toPixels(blueMaskUint8, canvas).then(() => blueMaskUint8.dispose());
+          tf.browser.toPixels(blueMaskUint8, canvas2).then(() => blueMaskUint8.dispose());
         });
-      }).catch(error => console.error('Prediction or post-processing error:', error));
+      }).then(()=>model.cleanUp())
+      .catch(error => console.error('Prediction or post-processing error:', error));
       
       requestAnimationFrame(drawFrame);
     };
@@ -98,6 +105,7 @@ const App = () => {
     <div>
       <video ref={videoRef} style={{display: 'none'}}></video>
       <canvas ref={canvasRef}></canvas>
+      <canvas  ref={canvas2Ref}></canvas>
     </div>
   );
 };
