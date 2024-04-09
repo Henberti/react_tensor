@@ -8,7 +8,8 @@
 # testing
 /coverage
 /models
-/public/jsconv
+/public/models
+
 
 # production
 /build
