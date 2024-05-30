@@ -73,11 +73,11 @@ const App = () => {
 
         // Preprocess the frame
         const tensor = tensCanvas
-          .resizeNearestNeighbor([256, 256])  // שנה ל-224x224 אם MobileNet
-    .toFloat()
-    .sub(tf.scalar(127.5))  // חיסור 127.5
-    .div(tf.scalar(127.5))  // חלוקה ב-127.5
-    .expandDims(0); 
+          .resizeNearestNeighbor([256, 256])
+          .toFloat()
+          .sub(tf.scalar(127.5))
+          .div(tf.scalar(127.5))
+          .expandDims(0);
 
         model
           .predict(tensor)
@@ -123,17 +123,14 @@ const App = () => {
 
               if (centroidY < centerY - videoHeight * 0.01) {
                 debounceTts("road might be ended please be careful");
-              }
-              else{
+              } else {
                 if (centroidX < centerX - videoWidth * 0.3) {
                   debounceTts("road is turning left please be careful");
                 }
                 if (centroidY > centerY + videoWidth * 0.3) {
                   debounceTts("road is turning right please be careful");
                 }
-
               }
-            
 
               const blueMask = tf.tidy(() => {
                 const zeros = tf.zerosLike(mask2d);
