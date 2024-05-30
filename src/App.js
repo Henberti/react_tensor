@@ -73,10 +73,11 @@ const App = () => {
 
         // Preprocess the frame
         const tensor = tensCanvas
-          .resizeNearestNeighbor([256, 256])
-          .toFloat()
-          .expandDims(0)
-          .div(255);
+          .resizeNearestNeighbor([256, 256])  // שנה ל-224x224 אם MobileNet
+    .toFloat()
+    .sub(tf.scalar(127.5))  // חיסור 127.5
+    .div(tf.scalar(127.5))  // חלוקה ב-127.5
+    .expandDims(0); 
 
         model
           .predict(tensor)
