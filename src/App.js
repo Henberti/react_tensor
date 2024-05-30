@@ -23,7 +23,7 @@ const App = () => {
   };
 
   useEffect(() => {
-    tf.loadLayersModel(process.env.PUBLIC_URL + "models/jsconv/model.json")
+    tf.loadLayersModel(process.env.PUBLIC_URL + "models/jsconv2/model.json")
       .then((loadedModel) => {
         console.log("Model loaded successfully:", loadedModel);
         setModel(loadedModel);
@@ -120,7 +120,7 @@ const App = () => {
               const centerX = videoWidth / 2;
               const centerY = videoHeight / 2;
 
-              if (centroidY < centerY - videoHeight * 0.3) {
+              if (centroidY < centerY - videoHeight * 0.01) {
                 debounceTts("road might be ended please be careful");
               }
               else{
