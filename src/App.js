@@ -225,6 +225,8 @@ const App = () => {
       <canvas ref={canvas2Ref}></canvas>
       <DetectModel />
     </div>
+
+
   );
 };
 
