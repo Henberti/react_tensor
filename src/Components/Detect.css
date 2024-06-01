@@ -1,0 +1,14 @@
+.webcam-canvas-container {
+    position: relative;
+    width: 640px;
+    height: 480px;
+  }
+  
+  .webcam, .canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
