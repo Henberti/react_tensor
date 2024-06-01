@@ -12,6 +12,14 @@ const App = () => {
   const lastTtsCall = useRef(Date.now());
   let voices = window.speechSynthesis.getVoices();
   const voice = voices[1];
+  const Colors = [
+    [0.9, 0.1, 0.1],  // Soft Red
+    [0.1, 0.9, 0.1],  // Soft Green
+    [0.1, 0.1, 0.9],  // Soft Blue
+    [0.9, 0.9, 0.1],  // Soft Yellow
+    [0.1, 0.9, 0.9],  // Soft Cyan
+    [0.9, 0.1, 0.9]   // Soft Magenta
+  ];
 
   const debounceTts = (message) => {
     const now = Date.now();
@@ -120,6 +128,128 @@ const App = () => {
 
               const centerX = videoWidth / 2;
               const centerY = videoHeight / 2;
+              function extractSquare(maskArray, center, size) {
+                const [cx, cy] = center;
+                const halfSize = Math.floor(size / 2);
+                const startX = Math.max(cx - halfSize, 0);
+                const startY = Math.max(cy - halfSize, 0);
+                const endX = Math.min(cx + halfSize, maskArray[0].length);
+                const endY = Math.min(cy + halfSize, maskArray.length);
+
+                const square = [];
+                for (let y = startY; y < endY; y++) {
+                  square.push(maskArray[y].slice(startX, endX));
+                }
+                return square;
+              }
+
+              // Function to detect shapes within the square using simple logic
+              function detectShapes(square, threshold = 1000) {
+                const shapes = [];
+                const visited = Array.from({ length: square.length }, () =>
+                  Array(square[0].length).fill(false)
+                );
+
+                function dfs(x, y) {
+                  const stack = [[x, y]];
+                  const shape = [];
+                  let count = 0;
+
+                  while (stack.length > 0) {
+                    const [cx, cy] = stack.pop();
+                    if (
+                      cx < 0 ||
+                      cy < 0 ||
+                      cx >= square[0].length ||
+                      cy >= square.length ||
+                      visited[cy][cx] ||
+                      square[cy][cx] === 0
+                    ) {
+                      continue;
+                    }
+
+                    visited[cy][cx] = true;
+                    count++;
+                    shape.push([cx, cy]);
+
+                    if (count > threshold) {
+                      return { count: count, shape: shape }; // Return early if threshold is exceeded
+                    }
+
+                    stack.push([cx + 1, cy]);
+                    stack.push([cx - 1, cy]);
+                    stack.push([cx, cy + 1]);
+                    stack.push([cx, cy - 1]);
+                  }
+
+                  return { count: count, shape: shape };
+                }
+
+                for (let y = 0; y < square.length; y++) {
+                  for (let x = 0; x < square[y].length; x++) {
+                    if (square[y][x] > 0 && !visited[y][x]) {
+                      const result = dfs(x, y);
+                      if (result.count > threshold) {
+                        return { exceededThreshold: true, shape: result.shape };
+                      }
+                      shapes.push(result);
+                    }
+                  }
+                }
+
+                return { exceededThreshold: false, shapes: shapes };
+              }
+
+              function createColoredTensor(shapes, height, width, centeredX, centeredY) {
+                const coloredTensor = tf.zeros([height, width, 3], "float32");
+                const coloredTensorBuffer = coloredTensor.bufferSync();
+
+                shapes.sort((a,b)=>a.length > b.length).forEach((shapeInfo, index) => {
+                  const color = Colors[index % Colors.length]; // Random color for each shape
+
+                  shapeInfo.shape.forEach(([x, y]) => {
+                    if (x < width && y < height) {
+                      coloredTensorBuffer.set(color[0], y+centeredY-50, x+centeredX-50, 0);
+                      coloredTensorBuffer.set(color[1], y+centeredY-50, x+centeredX-50, 1);
+                      coloredTensorBuffer.set(color[2], y+centeredY-50, x+centeredX-50, 2);
+                    }
+                  });
+                });
+            
+
+                return coloredTensorBuffer.toTensor().mul(255);
+              }
+
+              // Function to check if shapes meet the size threshold
+              function checkShapesSize(shapes, threshold) {
+                for (let shape of shapes) {
+                  if (shape >= threshold) {
+                    return true;
+                  }
+                }
+                return false;
+              }
+
+              // Main process
+              const squareSize = 100; // Size of the square
+              const sizeThreshold = 5000; // Minimum size of shape to be considered
+              const centerOfMass = [
+                Math.round(centroidX),
+                Math.round(centroidY),
+              ];
+
+              const square = extractSquare(maskArray, centerOfMass, squareSize);
+              const shapes = detectShapes(square, sizeThreshold);
+
+              let isValidCenter =
+                shapes.exceededThreshold === true
+                  ? true
+                  : checkShapesSize(shapes.shapes, sizeThreshold);
+
+              let coloredTensor = null;
+              if (!isValidCenter) {
+                coloredTensor = createColoredTensor(shapes.shapes, 480, 640, centerOfMass[0], centerOfMass[1]);
+              }
 
               if (centroidY < centerY - videoHeight * 0.01) {
                 debounceTts("road might be ended please be careful");
@@ -168,14 +298,66 @@ const App = () => {
                     return rgbaTensor;
                   });
                 };
+                const detectionBoundaryBox = 100;
 
                 // Create the green square
                 let greenChannel = zeros.clone().bufferSync();
-                for (let i = yStart; i < yStart + squareSize; i++) {
-                  for (let j = xStart; j < xStart + squareSize; j++) {
+                if (isValidCenter) {
+                  for (let i = yStart; i < yStart + squareSize; i++) {
+                    for (let j = xStart; j < xStart + squareSize; j++) {
+                      greenChannel.set(255, i, j);
+                    }
+                  }
+                }
+                const squareLeftBorder = Math.max(
+                  xStart - detectionBoundaryBox,
+                  0
+                );
+                const squareRightBorder = Math.min(
+                  xStart + detectionBoundaryBox,
+                  greenChannel.shape[1]
+                );
+                const squareTopBorder = Math.max(
+                  yStart - detectionBoundaryBox,
+                  0
+                );
+                const squareBottomBorder = Math.min(
+                  yStart + detectionBoundaryBox,
+                  greenChannel.shape[0]
+                );
+                for (let i = squareTopBorder; i < squareTopBorder + 5; i++) {
+                  for (let j = squareLeftBorder; j < squareRightBorder; j++) {
                     greenChannel.set(255, i, j);
                   }
                 }
+                for (
+                  let i = squareBottomBorder - 5;
+                  i < squareBottomBorder;
+                  i++
+                ) {
+                  for (let j = squareLeftBorder; j < squareRightBorder; j++) {
+                    greenChannel.set(255, i, j);
+                  }
+                }
+                for (let i = squareTopBorder; i < squareBottomBorder; i++) {
+                  for (
+                    let j = squareLeftBorder;
+                    j < squareLeftBorder + 5;
+                    j++
+                  ) {
+                    greenChannel.set(255, i, j);
+                  }
+                }
+                for (let i = squareTopBorder; i < squareBottomBorder; i++) {
+                  for (
+                    let j = squareRightBorder - 5;
+                    j < squareRightBorder;
+                    j++
+                  ) {
+                    greenChannel.set(255, i, j);
+                  }
+                }
+
                 greenChannel = greenChannel.toTensor();
 
                 // Create the red square
@@ -185,16 +367,30 @@ const App = () => {
                     redChannel.set(255, i, j);
                   }
                 }
+
                 redChannel = redChannel.toTensor();
+                if (isValidCenter) {
+                  redChannel = tf.add(redChannel, greenChannel).div(255);
+                }
 
                 // Combine channels
-                const mask = tf.stack(
+                let mask = tf.stack(
                   [redChannel, greenChannel, blueChannel],
                   -1
                 );
+                if(coloredTensor) {
+                  mask = blendTensors(mask, coloredTensor, 0.5);
+                }
+
+
+
+
+
                 const t2 = tf.browser.fromPixels(canvas);
 
                 const ttt = blendTensors(mask, t2, 0.5);
+     
+
                 const ttt2 = addAlphaChannel(ttt, alphaChannel);
 
                 return ttt2;
@@ -225,8 +421,6 @@ const App = () => {
       <canvas ref={canvas2Ref}></canvas>
       <DetectModel />
     </div>
-
-
   );
 };
 
