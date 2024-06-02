@@ -1,255 +1,307 @@
 import React, { useRef, useEffect, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
-import Webcam from "react-webcam";
-import tts from "./Tts";
-import "./Segment.css";
+import tts from "../Components/Tts";
+import { useSegmentation } from "../hooks/modelsHook";
+//this is the model that we will use to predict the mask hen
+const App = () => {
+  const videoRef = useRef(null);
+  const canvasRef = useRef();
+  const wasRendered = useRef(false);
+  const canvas2Ref = useRef();
+  const { start, model } = useSegmentation("models/jsconv2/model.json");
+  const lastTtsCall = useRef(Date.now());
+  let voices = window.speechSynthesis.getVoices();
+  const voice = voices[1];
+  const Colors = [
+    [0.9, 0.1, 0.1], // Soft Red
+    [0.1, 0.9, 0.1], // Soft Green
+    [0.1, 0.1, 0.9], // Soft Blue
+    [0.9, 0.9, 0.1], // Soft Yellow
+    [0.1, 0.9, 0.9], // Soft Cyan
+    [0.9, 0.1, 0.9], // Soft Magenta
+  ];
 
-const Segmentation = () => {
-    const webcamRef = useRef(null);
-    const canvasRef = useRef(null);
-    const canvas2Ref = useRef(null);
-    const [model, setModel] = useState(null);
-    const lastTtsCall = useRef(Date.now());
-    const [started, setStarted] = useState(false);
+  const debounceTts = (message) => {
+    const now = Date.now();
 
-    let voices = window.speechSynthesis.getVoices();
-    const voice = voices[1];
+    if (now - lastTtsCall.current > 3000) {
+      tts(message, voice);
+      lastTtsCall.current = now;
+    }
+  };
 
-    const debounceTts = (message) => {
-        const now = Date.now();
-        if (now - lastTtsCall.current > 3000) {
-            tts(message, voice);
-            lastTtsCall.current = now;
-        }
-    };
+  // useEffect(() => {
+  //   tf.loadLayersModel(process.env.PUBLIC_URL + "models/jsconv2/model.json")
+  //     .then((loadedModel) => {
+  //       console.log("Model loaded successfully:", loadedModel);
+  //       setModel(loadedModel);
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error loading model:", error);
+  //     });
+  // }, []);
 
-    useEffect(() => {
-        tf.loadLayersModel(process.env.PUBLIC_URL + "models/jsconv2/model.json")
-            .then((loadedModel) => {
-                console.log("Model loaded successfully:", loadedModel);
-                setModel(loadedModel);
-            })
-            .catch((error) => {
-                console.error("Error loading model:", error);
-            });
-    }, []);
+  useEffect(() => {
+    if (!model || !videoRef.current) return;
+    if (wasRendered.current) return;
+    wasRendered.current = true;
 
-    useEffect(() => {
-        if (!model || !webcamRef.current || !started) return;
-        const captureAndPredict = async () => {
-            if (
-                typeof webcamRef.current !== "undefined" &&
-                webcamRef.current !== null &&
-                webcamRef.current.video.readyState === 4
-            ) {
-                const video = webcamRef.current.video;
-                const videoWidth = webcamRef.current.video.videoWidth;
-                const videoHeight = webcamRef.current.video.videoHeight;
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then((stream) => {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().then(() => {
+          captureAndPredict();
+        });
+      })
+      .catch((error) => {
+        console.error("Error accessing webcam:", error);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model]);
 
-                canvasRef.current.width = videoWidth;
-                canvasRef.current.height = videoHeight;
+  const captureAndPredict = async () => {
+    if (!videoRef.current || !model) return;
 
-                const context = canvasRef.current.getContext("2d");
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+    const canvas2 = canvas2Ref.current;
 
-                const drawFrame = () => {
-                    tf.tidy(() => {
-                        context.drawImage(video, 0, 0, videoWidth, videoHeight);
+    const drawFrame = () => {
+      tf.tidy(() => {
+        const videoWidth = video.videoWidth;
+        const videoHeight = video.videoHeight;
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
 
-                        const tensCanvas = tf.browser.fromPixels(canvasRef.current);
-                        const tensor = tensCanvas
-                            .resizeNearestNeighbor([256, 256])
-                            .toFloat()
-                            .expandDims(0)
-                            .div(255);
+        context.drawImage(video, 0, 0, videoWidth, videoHeight);
 
-                        model
-                            .predict(tensor)
-                            .data()
-                            .then((predictionData) => {
-                                tf.tidy(() => {
-                                    let maskTensor = tf.tensor2d(predictionData, [256, 256]);
-                                    maskTensor = maskTensor.expandDims(-1);
-                                    const resizedMask = maskTensor.resizeNearestNeighbor([videoHeight, videoWidth]);
-                                    let mask2d = resizedMask.squeeze();
-                                    mask2d = mask2d.greater(0.5).cast("float32");
+        start(video)
+          .then((res) => {
+            tf.tidy(() => {
+              function createColoredTensor(
+                shapes,
+                height,
+                width,
+                centeredX,
+                centeredY
+              ) {
+                const coloredTensor = tf.zeros([height, width, 3], "float32");
+                const coloredTensorBuffer = coloredTensor.bufferSync();
 
-                                    const maskArray = mask2d.arraySync();
-                                    let sumX = 0;
-                                    let sumY = 0;
-                                    let count = 0;
-                                    for (let y = 0; y < maskArray.length; y++) {
-                                        for (let x = 0; x < maskArray[y].length; x++) {
-                                            if (maskArray[y][x] > 0) {
-                                                sumX += x;
-                                                sumY += y;
-                                                count++;
-                                            }
-                                        }
-                                    }
+                shapes
+                  .sort((a, b) => a.length > b.length)
+                  .forEach((shapeInfo, index) => {
+                    const color = Colors[index % Colors.length]; // Random color for each shape
 
-                                    const centroidX = (sumX / count) * (videoWidth / mask2d.shape[1]);
-                                    const centroidY = (sumY / count) * (videoHeight / mask2d.shape[0]);
-
-                                    const centerX = videoWidth / 2;
-                                    const centerY = videoHeight / 2;
-
-                                    if (centroidY < centerY - videoHeight * 0.3) {
-                                        debounceTts("road might be ended please be careful");
-                                    } else {
-                                        if (centroidX < centerX - videoWidth * 0.3) {
-                                            debounceTts("road is turning left please be careful");
-                                        }
-                                        if (centroidX > centerX + videoWidth * 0.3) {
-                                            debounceTts("road is turning right please be careful");
-                                        }
-                                    }
-
-                                    const blueMask = tf.tidy(() => {
-                                        const zeros = tf.zerosLike(mask2d);
-                                        const ones = tf.onesLike(mask2d);
-                                        const blueChannel = ones;
-                                        const alphaChannel = mask2d.mul(127).add(128);
-
-                                        const squareSize = 20;
-                                        const xStart = Math.floor(centroidX);
-                                        const yStart = Math.floor(centroidY);
-                                        const yStart2 = Math.floor(centerY);
-                                        const xStart2 = Math.floor(centerX);
-
-                                        const blendTensors = (tensorA, tensorB, alpha) => {
-                                            return tf.tidy(() => {
-                                                const blendedTensor = tensorA
-                                                    .mul(alpha)
-                                                    .add(tensorB.mul(1 - alpha));
-                                                return blendedTensor;
-                                            });
-                                        };
-                                        const addAlphaChannel = (rgbTensor, alphaChannel) => {
-                                            return tf.tidy(() => {
-                                                const alphaChannelReshaped = alphaChannel.reshape([
-                                                    480, 640, 1,
-                                                ]);
-
-                                                const rgbaTensor = tf.concat(
-                                                    [rgbTensor, alphaChannelReshaped],
-                                                    -1
-                                                );
-
-                                                return rgbaTensor;
-                                            });
-                                        };
-
-                                        let greenChannel = zeros.clone().bufferSync();
-                                        for (let i = yStart; i < yStart + squareSize; i++) {
-                                            for (let j = xStart; j < xStart + squareSize; j++) {
-                                                greenChannel.set(255, i, j);
-                                            }
-                                        }
-                                        greenChannel = greenChannel.toTensor();
-
-                                        let redChannel = zeros.clone().bufferSync();
-                                        for (let i = yStart2; i < yStart2 + squareSize; i++) {
-                                            for (let j = xStart2; j < xStart2 + squareSize; j++) {
-                                                redChannel.set(255, i, j);
-                                            }
-                                        }
-                                        redChannel = redChannel.toTensor();
-
-                                        const mask = tf.stack(
-                                            [redChannel, greenChannel, blueChannel],
-                                            -1
-                                        );
-                                        const t2 = tf.browser.fromPixels(canvasRef.current);
-
-                                        const ttt = blendTensors(mask, t2, 0.5);
-                                        const ttt2 = addAlphaChannel(ttt, alphaChannel);
-
-                                        return ttt2;
-                                    });
-
-                                    const blueMaskUint8 = blueMask.cast("int32");
-
-                                    tf.browser.toPixels(blueMaskUint8, canvas2Ref.current).then(() => { });
-                                });
-                            })
-                            .catch((error) =>
-                                console.error("Prediction or post-processing error:", error)
-                            );
+                    shapeInfo.shape.forEach(([x, y]) => {
+                      if (x < width && y < height) {
+                        coloredTensorBuffer.set(
+                          color[0],
+                          y + centeredY - 50,
+                          x + centeredX - 50,
+                          0
+                        );
+                        coloredTensorBuffer.set(
+                          color[1],
+                          y + centeredY - 50,
+                          x + centeredX - 50,
+                          1
+                        );
+                        coloredTensorBuffer.set(
+                          color[2],
+                          y + centeredY - 50,
+                          x + centeredX - 50,
+                          2
+                        );
+                      }
                     });
+                  });
 
-                    requestAnimationFrame(drawFrame);
+                return coloredTensorBuffer.toTensor().mul(255);
+              }
+              const centroidY = res.centerOfMass[1];
+              const centroidX = res.centerOfMass[0];
+              const centerY = res.videoCenter[1];
+              const centerX = res.videoCenter[0];
+
+              let coloredTensor = null;
+              if (!res.isValidCenter) {
+                coloredTensor = createColoredTensor(
+                  res.shapes,
+                  480,
+                  640,
+                  res.centerOfMass[0],
+                  res.centerOfMass[1]
+                );
+              }
+
+              if (centroidY < centerY - videoHeight * 0.01) {
+                debounceTts("road might be ended please be careful");
+              } else {
+                if (centroidX < centerX - videoWidth * 0.3) {
+                  debounceTts("road is turning left please be careful");
+                }
+                if (centroidY > centerY + videoWidth * 0.3) {
+                  debounceTts("road is turning right please be careful");
+                }
+              }
+
+              const blueMask = tf.tidy(() => {
+                const zeros = tf.zerosLike(res.mask2d);
+                const ones = tf.onesLike(res.mask2d);
+                const blueChannel = ones;
+                const alphaChannel = res.mask2d.mul(127).add(128);
+
+                const squareSize = 20;
+                const xStart = Math.floor(centroidX);
+                const yStart = Math.floor(centroidY);
+                const yStart2 = Math.floor(centerY);
+                const xStart2 = Math.floor(centerX);
+
+                const blendTensors = (tensorA, tensorB, alpha) => {
+                  return tf.tidy(() => {
+                    const blendedTensor = tensorA
+                      .mul(alpha)
+                      .add(tensorB.mul(1 - alpha));
+                    return blendedTensor;
+                  });
                 };
+                const addAlphaChannel = (rgbTensor, alphaChannel) => {
+                  return tf.tidy(() => {
+                    // Ensure the alpha channel has shape [480, 640, 1]
+                    const alphaChannelReshaped = alphaChannel.reshape([
+                      480, 640, 1,
+                    ]);
 
-                drawFrame();
-            };
-        };
+                    // Concatenate along the last axis to form the RGBA tensor
+                    const rgbaTensor = tf.concat(
+                      [rgbTensor, alphaChannelReshaped],
+                      -1
+                    );
 
-        captureAndPredict();
-    }, [model, started]);
+                    return rgbaTensor;
+                  });
+                };
+                const detectionBoundaryBox = 100;
 
-    const videoConstraints = {
-        width: 640,
-        height: 480,
-        facingMode: "environment"
+                // Create the green square
+                let greenChannel = zeros.clone().bufferSync();
+                if (res.isValidCenter) {
+                  for (let i = yStart; i < yStart + squareSize; i++) {
+                    for (let j = xStart; j < xStart + squareSize; j++) {
+                      greenChannel.set(255, i, j);
+                    }
+                  }
+                }
+                const squareLeftBorder = Math.max(
+                  xStart - detectionBoundaryBox,
+                  0
+                );
+                const squareRightBorder = Math.min(
+                  xStart + detectionBoundaryBox,
+                  greenChannel.shape[1]
+                );
+                const squareTopBorder = Math.max(
+                  yStart - detectionBoundaryBox,
+                  0
+                );
+                const squareBottomBorder = Math.min(
+                  yStart + detectionBoundaryBox,
+                  greenChannel.shape[0]
+                );
+                for (let i = squareTopBorder; i < squareTopBorder + 5; i++) {
+                  for (let j = squareLeftBorder; j < squareRightBorder; j++) {
+                    greenChannel.set(255, i, j);
+                  }
+                }
+                for (
+                  let i = squareBottomBorder - 5;
+                  i < squareBottomBorder;
+                  i++
+                ) {
+                  for (let j = squareLeftBorder; j < squareRightBorder; j++) {
+                    greenChannel.set(255, i, j);
+                  }
+                }
+                for (let i = squareTopBorder; i < squareBottomBorder; i++) {
+                  for (
+                    let j = squareLeftBorder;
+                    j < squareLeftBorder + 5;
+                    j++
+                  ) {
+                    greenChannel.set(255, i, j);
+                  }
+                }
+                for (let i = squareTopBorder; i < squareBottomBorder; i++) {
+                  for (
+                    let j = squareRightBorder - 5;
+                    j < squareRightBorder;
+                    j++
+                  ) {
+                    greenChannel.set(255, i, j);
+                  }
+                }
+
+                greenChannel = greenChannel.toTensor();
+
+                // Create the red square
+                let redChannel = zeros.clone().bufferSync();
+                for (let i = yStart2; i < yStart2 + squareSize; i++) {
+                  for (let j = xStart2; j < xStart2 + squareSize; j++) {
+                    redChannel.set(255, i, j);
+                  }
+                }
+
+                redChannel = redChannel.toTensor();
+                if (res.isValidCenter) {
+                  redChannel = tf.add(redChannel, greenChannel).div(255);
+                }
+
+                // Combine channels
+                let mask = tf.stack(
+                  [redChannel, greenChannel, blueChannel],
+                  -1
+                );
+                if (coloredTensor) {
+                  mask = blendTensors(mask, coloredTensor, 0.5);
+                }
+
+                const t2 = tf.browser.fromPixels(canvas);
+
+                const ttt = blendTensors(mask, t2, 0.5);
+
+                const ttt2 = addAlphaChannel(ttt, alphaChannel);
+
+                return ttt2;
+              });
+
+              // Convert to uint8 since toPixels expects integers
+              const blueMaskUint8 = blueMask.cast("int32");
+
+              // Overlay the mask on the canvas
+              tf.browser.toPixels(blueMaskUint8, canvas2).then(() => {});
+            });
+          })
+          .catch((error) =>
+            console.error("Prediction or post-processing error:", error)
+          );
+      });
+
+      requestAnimationFrame(drawFrame);
     };
 
-    return (
-        <div className="App">
-            <header className="App-header">
-                <Webcam
-                    ref={webcamRef}
-                    muted={true}
-                    audio={false}
-                    videoConstraints={videoConstraints}
-                    style={{
-                        position: "absolute",
-                        marginLeft: "auto",
-                        marginRight: "auto",
-                        left: 0,
-                        right: 0,
-                        textAlign: "center",
-                        zindex: 9,
-                        width: 640,
-                        height: 480,
-                    }}
-                />
-                <canvas
-                    ref={canvasRef}
-                    style={{
-                        position: "absolute",
-                        marginLeft: "auto",
-                        marginRight: "auto",
-                        left: 0,
-                        right: 0,
-                        textAlign: "center",
-                        zindex: 8,
-                        width: 640,
-                        height: 480,
-                    }}
-                />
-                <canvas
-                    ref={canvas2Ref}
-                    style={{
-                        position: "absolute",
-                        marginLeft: "auto",
-                        marginRight: "auto",
-                        left: 0,
-                        right: 0,
-                        textAlign: "center",
-                        zindex: 7,
-                        width: 640,
-                        height: 480,
-                    }}
-                />
-            </header>
-            <button onClick={() => {
-                let voices = window.speechSynthesis.getVoices();
-                const voice = voices[1];
-                tts("Started", voice);
-                setStarted(true);
-            }}>Start</button>
-        </div>
-    );
+    drawFrame();
+  };
+
+  return (
+    <div>
+      <video ref={videoRef} style={{ display: "none" }}></video>
+      <canvas ref={canvasRef}></canvas>
+      <canvas ref={canvas2Ref}></canvas>
+    </div>
+  );
 };
 
-export default Segmentation;
+export default App;
