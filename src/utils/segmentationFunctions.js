@@ -23,21 +23,21 @@ const returnCentroid = (
   offsetX = 0,
   offsetY = 0
 ) => {
-  let xSum = 0;
-  let ySum = 0;
+  let sumX = 0;
+  let sumY = 0;
   let count = 0;
-  for (let i = 0; i < maskArray.length; i++) {
-    for (let j = 0; j < maskArray[0].length; j++) {
-      if (maskArray[i][j] === 1) {
-        xSum += i;
-        ySum += j;
+  for (let y = 0; y < maskArray.length; y++) {
+    for (let x = 0; x < maskArray[y].length; x++) {
+      if (maskArray[y][x] > 0) {
+        sumX += x;
+        sumY += y;
         count++;
       }
     }
   }
   return {
-    centroidX: (xSum / count) * (width / maskShape[1]),
-    centroidY: (ySum / count) * (height / maskShape[0]),
+    centroidX: (sumX / count) * (width / maskShape[1]),
+    centroidY: (sumY / count) * (height / maskShape[0]),
     centerX: width / 2 + offsetX,
     centerY: height / 2 + offsetY,
   };

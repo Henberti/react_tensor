@@ -30,7 +30,6 @@ const useSegmentation = (
   }, []);
 
   const start = async (video) => {
-
     const errorsArray = [
       model ? "" : "Model is not loaded",
       video ? "" : "No video element",
@@ -43,10 +42,8 @@ const useSegmentation = (
     // Capture the video frame as a tensor
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
-   
 
     const tensCanvas = tf.browser.fromPixels(video);
-
 
     const tensor = tf.tidy(() => {
       // Preprocess the tensor
@@ -57,52 +54,44 @@ const useSegmentation = (
         .div(tf.scalar(127.5))
         .expandDims(0);
     });
- 
 
     try {
       // Perform the prediction
       const predictionData = await model.predict(tensor).data();
-    
-     
 
       // Process the prediction data
       const result = tf.tidy(() => {
         // Resize and filter the mask
- 
-      
-        let mask = ResizeMask(predictionData, videoHeight, videoWidth);
-  
-        mask = filterMaskPrediction(mask, maskThreshold);
 
+        let mask = ResizeMask(predictionData, videoHeight, videoWidth);
+
+        mask = filterMaskPrediction(mask, maskThreshold);
 
         // Extract mask data and calculate centroid
         const maskArray = mask.arraySync();
- 
+
         const { centroidX, centroidY, centerX, centerY } = returnCentroid(
           maskArray,
           mask.shape,
           videoWidth,
           videoHeight
         );
- 
 
         // Determine center of mass and extract the relevant square
         const centerOfMass = [Math.round(centroidX), Math.round(centroidY)];
-   
+
         const extractedSquare = extractSquare(
           maskArray,
           centerOfMass,
           squareSize
         );
-  
 
         // Detect shapes and determine if the center is valid
         const shapes = detectShapes(extractedSquare, squareThreshold);
-    
+
         const isValidCenter = shapes.exceededThreshold
           ? true
           : checkShapesSize(shapes.shapes, squareThreshold);
- 
 
         // Return the final result
         return {
@@ -110,7 +99,7 @@ const useSegmentation = (
           centerOfMass,
           videoCenter: [Math.floor(centerX), Math.floor(centerY)],
           shapes: shapes.shapes,
-          mask2d:mask
+          mask2d: mask,
         };
       });
 
