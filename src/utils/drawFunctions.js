@@ -89,11 +89,12 @@ const drawMask = (
   const alphaChannel = mask2d.mul(127).add(128);
   const Xmin = Math.max(xStart - detectionBoundaryBox, 0);
 
+
   const Ymin = Math.max(yStart - detectionBoundaryBox, 0);
   if (isValidCenter) {
     drawFilledSquare(ctx, xStart, yStart, 20, "green");
   }
-  drawBoundingBox(ctx, Xmin, Ymin, 200, "green");
+  drawBoundingBox(ctx, Xmin, Ymin, 200, isValidCenter?"green": 'yellow');
   drawFilledSquare(
     ctx,
     Math.round(width / 2),
