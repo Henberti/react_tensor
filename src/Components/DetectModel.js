@@ -93,7 +93,7 @@ function DetectModel() {
 
 
         // Draw bounding boxes if the object is close to the center and threshold met
-        if (isCloseToCenter(frameCenter, bboxCenter) && checkThreshold(prediction.class)) {
+        if (isCloseToCenter(frameCenter, bboxCenter)) {
           const messages = [
             "There is a " + prediction.class + " in front of you.",
             "You are walking toward a " + prediction.class,
