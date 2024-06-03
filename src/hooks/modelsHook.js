@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
+import * as cocossd from "@tensorflow-models/coco-ssd";
 import {
   ResizeMask,
   filterMaskPrediction,
@@ -111,7 +112,7 @@ const useSegmentation = (
     }
   };
 
-  const getSegmentation =async (ctx, video, height, width) => {
+  const getSegmentation = async (ctx, video, height, width) => {
     return start(video).then((res) => {
       return tf.tidy(() => {
         let coloredTensor = null;
@@ -142,7 +143,7 @@ const useSegmentation = (
         });
         // Convert to uint8 since toPixels expects integers
         const blueMaskUint8 = blueMask.cast("int32");
-        return {blueMaskUint8, res};
+        return { blueMaskUint8, res };
       });
     });
   };
@@ -150,4 +151,32 @@ const useSegmentation = (
   return { model, start, getSegmentation };
 };
 
-export { useSegmentation };
+const useDetection = () => {
+  const [model, setModel] = useState(null);
+
+  useEffect(() => {
+    const loadModel = async () => {
+      const loadedModel = await cocossd.load();
+      setModel(loadedModel);
+    };
+    loadModel();
+  }, []);
+
+  const detect = async (video) => {
+    const errorsArray = [
+      model ? "" : "Model is not loaded",
+      video ? "" : "No video element",
+    ];
+    if (errorsArray.some((v) => v !== "")) {
+      const errorsString = errorsArray.join("\n");
+      console.log(errorsString);
+      return null;
+    }
+    
+    
+  }
+
+
+};
+
+export { useSegmentation, useDetection };
