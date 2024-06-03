@@ -25,6 +25,7 @@ const Dictaphone = ({ setStarted }) => {
     if ((transcript.includes("hello") || transcript.includes("Hello")) && !commandProcessed) {
       handleStartCommand();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transcript, commandProcessed, setStarted]); 
 
   if (!browserSupportsSpeechRecognition) {
