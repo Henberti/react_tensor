@@ -116,6 +116,7 @@ function DetectModel() {
 
   useEffect(() => {
     if (started) runCoco();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started]);
 
   return (

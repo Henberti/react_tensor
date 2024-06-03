@@ -162,7 +162,16 @@ const useDetection = () => {
     loadModel();
   }, []);
 
-  const detect = async (video) => {
+  function isCloseToCenter(frameCenter, bboxCenter) {
+    const distance = Math.sqrt(
+      Math.pow(frameCenter.x - bboxCenter.x, 2) +
+        Math.pow(frameCenter.y - bboxCenter.y, 2)
+    );
+    const threshold = 70;
+    return distance < threshold;
+  }
+
+  const detect = async (video, width, height) => {
     const errorsArray = [
       model ? "" : "Model is not loaded",
       video ? "" : "No video element",
@@ -172,11 +181,22 @@ const useDetection = () => {
       console.log(errorsString);
       return null;
     }
-    
-    
-  }
+    const frameCenter = { x: width / 2, y: height / 2 };
 
+    return model.detect(video).then((res) => {
+      const bboxes = [];
+      res.forEach((prediction) => {
+        const [x, y, w, h] = prediction.bbox;
+        const bboxCenter = { x: x + w / 2, y: y + h / 2 };
+        if (isCloseToCenter(frameCenter, bboxCenter)) {
+          bboxes.push(prediction);
+        }
+      });
+      return bboxes;
+    });
+  };
 
+  return { model, detect };
 };
 
 export { useSegmentation, useDetection };
