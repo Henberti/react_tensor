@@ -91,6 +91,7 @@ function DetectModel() {
         const [x, y, width, height] = prediction.bbox;
         const bboxCenter = { x: x + width / 2, y: y + height / 2 };
 
+
         // Draw bounding boxes if the object is close to the center and threshold met
         if (isCloseToCenter(frameCenter, bboxCenter) && checkThreshold(prediction.class)) {
           const messages = [

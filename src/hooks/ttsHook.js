@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 
 import tts from '../Components/Tts';
 
+const messages = [
+  "Sidewalk might be ended please be careful",
+]
+
 const useTts = () => {
   const [bounce, setBounce] = useState(false);
   const [messageQueue, setMessageQueue] = useState(new Set());
@@ -9,6 +13,7 @@ const useTts = () => {
   useEffect(() => {
     if (messageQueue.size === 0) return;
     if (bounce) return;
+    console.log("messageQueue", messageQueue);
     const messages = Array.from(messageQueue.entries()).map(([key, value]) => {
       messageQueue.delete(key);
       return value;

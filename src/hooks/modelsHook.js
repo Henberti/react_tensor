@@ -8,6 +8,7 @@ import {
   detectShapes,
   checkShapesSize,
 } from "../utils/segmentationFunctions";
+import { createColoredTensor, drawMask } from "../utils/drawFunctions";
 
 const useSegmentation = (
   modelPath,
@@ -110,7 +111,43 @@ const useSegmentation = (
     }
   };
 
-  return { model, start };
+  const getSegmentation =async (ctx, video, height, width) => {
+    return start(video).then((res) => {
+      return tf.tidy(() => {
+        let coloredTensor = null;
+        const centroidY = res.centerOfMass[1];
+        const centroidX = res.centerOfMass[0];
+
+        if (res.shapes) {
+          coloredTensor = createColoredTensor(
+            res.shapes,
+            height,
+            width,
+            centroidX,
+            centroidY
+          );
+        }
+        const blueMask = tf.tidy(() => {
+          return drawMask(
+            ctx,
+            res.mask2d,
+            res.isValidCenter,
+            video,
+            coloredTensor,
+            centroidX,
+            centroidY,
+            width,
+            height
+          );
+        });
+        // Convert to uint8 since toPixels expects integers
+        const blueMaskUint8 = blueMask.cast("int32");
+        return {blueMaskUint8, res};
+      });
+    });
+  };
+
+  return { model, start, getSegmentation };
 };
 
 export { useSegmentation };
