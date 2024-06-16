@@ -1,5 +1,5 @@
 import React from "react";
-import DetectModel from "./Components/DetectModel";
+// import DetectModel from "./Components/DetectModel";
 import Segmentation from "./Components/Segmentation";
 import Navbar from "./Components/Navbar"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
@@ -11,8 +11,8 @@ const App = () => {
     <div>
       <Navbar />
       <Routes>
-        <Route path="/obstacledetection" element={<DetectModel />} />
-        <Route path="/terrainsegmentation" element={<Segmentation />} />
+        <Route path="/visual" element={<Segmentation />} />
+        {/* <Route path="/terrainsegmentation" element={<Segmentation />} /> */}
       </Routes>
     </div>
   );

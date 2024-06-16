@@ -1,36 +1,38 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import { useSegmentation, useDetection } from "../hooks/modelsHook";
-//this is the model that we will use to predict the mask hen
+
 const App = () => {
   const videoRef = useRef(null);
   const wasRendered = useRef(false);
   const canvas2Ref = useRef();
+  const [isStarted, setIsStarted] = useState(false);
   const { model, getSegmentation } = useSegmentation(
     "models/jsconv2/model.json"
   );
-
   const { detect, model: detectionModel } = useDetection();
 
   useEffect(() => {
     if (!model || !videoRef.current) return;
     if (!detectionModel) return;
     if (wasRendered.current) return;
-    wasRendered.current = true;
 
-    navigator.mediaDevices
-      .getUserMedia({ video: true })
-      .then((stream) => {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().then(() => {
-          captureAndPredict();
+    if (isStarted) {
+      wasRendered.current = true;
+
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().then(() => {
+            captureAndPredict();
+          });
+        })
+        .catch((error) => {
+          console.error("Error accessing webcam:", error);
         });
-      })
-      .catch((error) => {
-        console.error("Error accessing webcam:", error);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, detectionModel]);
+    }
+  }, [model, detectionModel, isStarted]);
 
   const captureAndPredict = async () => {
     if (!videoRef.current || !model) return;
@@ -58,7 +60,6 @@ const App = () => {
         tf.tidy(() => {
           Promise.all([getSegmentation(ctx, video, videoHeight, videoWidth)])
             .then(([segmentation]) => {
-              // console.log('detections', detection)
               tf.tidy(() => {
                 tf.browser.toPixels(segmentation.blueMaskUint8, canvas2);
                 tf.dispose(segmentation.blueMaskUint8);
@@ -77,7 +78,8 @@ const App = () => {
   };
 
   return (
-    <div>
+    <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
+      <button onClick={() => setIsStarted(true)}>Start</button>
       <video ref={videoRef} style={{ display: "none" }}></video>
       <canvas ref={canvas2Ref}></canvas>
     </div>

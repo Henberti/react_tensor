@@ -15,7 +15,7 @@ import AdbIcon from '@mui/icons-material/Adb';
 import { useNavigate } from "react-router-dom";
 
 
-const pages = ['Obstacle Detection', 'Terrain Segmentation'];
+const pages = ['Model Visualization', 'Demo'];
 
 
 function Navbar() {
@@ -32,11 +32,11 @@ function Navbar() {
 
   const handleCloseNavMenu = (page) => {
     switch (page) {
-        case "Obstacle Detection":
-            navigate("/obstacledetection");
+        case "Model Visualization":
+            navigate("/visual");
             break;
-        case "Terrain Segmentation":
-            navigate("/terrainsegmentation");
+        case "Demo":
+            navigate("/demo");
             break;
     }
     setAnchorElNav(null);

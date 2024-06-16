@@ -10,7 +10,7 @@ import {
   checkShapesSize,
 } from "../utils/segmentationFunctions";
 import { createColoredTensor, drawMask } from "../utils/drawFunctions";
-
+import {useTts} from './ttsHook';
 const useSegmentation = (
   modelPath,
   maskThreshold = 0.5,
