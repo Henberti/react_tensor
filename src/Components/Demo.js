@@ -1,11 +1,11 @@
 import React, { useRef, useEffect, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import { useSegmentation, useDetection } from "../hooks/modelsHook";
-import { useTts } from "../hooks/ttsHook";
+import {useTts} from "../hooks/ttsHook";
 
 
 const App = () => {
-  const { addMessage } = useTts();
+  const { addMessage, tts} = useTts();
   const videoRef = useRef(null);
   const wasRendered = useRef(false);
   const canvas2Ref = useRef();
@@ -26,18 +26,18 @@ const App = () => {
       wasRendered.current = true;
 
       navigator.mediaDevices
-        .getUserMedia({
-          video: isMobile() ? { facingMode: { exact: "environment" } } : true
-        })
-        .then((stream) => {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().then(() => {
-            captureAndPredict();
-          });
-        })
-        .catch((error) => {
-          console.error("Error accessing webcam:", error);
+      .getUserMedia({
+        video: isMobile() ? { facingMode: { exact: "environment" } } : true
+      })
+      .then((stream) => {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().then(() => {
+          captureAndPredict();
         });
+      })
+      .catch((error) => {
+        console.error("Error accessing webcam:", error);
+      });
     }
   }, [model, detectionModel, isStarted]);
 
@@ -55,7 +55,7 @@ const App = () => {
     const drawFrame = async () => {
       const detection = await detect(video, videoWidth, videoHeight);
       detection.forEach((prediction) => {
-        // addMessage(prediction.class);
+        addMessage(prediction.class);
         const [x, y] = prediction.bbox;
         const [width, height] = prediction.bbox.slice(2);
         ctx.strokeStyle = "red";
@@ -69,7 +69,6 @@ const App = () => {
           Promise.all([getSegmentation(ctx, video, videoHeight, videoWidth)])
             .then(([segmentation]) => {
               tf.tidy(() => {
-           
                 tf.browser.toPixels(segmentation.blueMaskUint8, canvas2);
                 tf.dispose(segmentation.blueMaskUint8);
               });
@@ -87,14 +86,14 @@ const App = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-      <button onClick={() => {
-        addMessage("Started")
+    <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
+   <button onClick={() => {
+        tts("Started")
         setIsStarted(true)
 
-      }}>Start</button>
-      <video ref={videoRef} style={{ display: "none" }}></video>
-      <canvas ref={canvas2Ref}></canvas>
+      }}>Start</button>      <video hidden ref={videoRef} style={{ display: "none" }}></video>
+      <canvas hidden ref={canvas2Ref}></canvas>
+
     </div>
   );
 };

@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 import tts from '../Components/Tts';
-
 const messages = [
   "Sidewalk might be ended please be careful",
 ]
@@ -9,6 +8,7 @@ const messages = [
 const useTts = () => {
   const [bounce, setBounce] = useState(false);
   const [messageQueue, setMessageQueue] = useState(new Set());
+  const lastTtsCall = useRef(Date.now());
 
   useEffect(() => {
     if (messageQueue.size === 0) return;
@@ -20,6 +20,17 @@ const useTts = () => {
     });
     handleTts(messages);
   }, [messageQueue, bounce]);
+
+  let voices = window.speechSynthesis.getVoices();
+  const voice = voices[6];
+
+  const debounceTts = (message) => {
+    const now = Date.now();
+    if (now - lastTtsCall.current > 3000) {
+      tts(message);
+      lastTtsCall.current = now;
+    }
+  };
 
   const handleTts = (messages) => {
     setBounce(true);
@@ -40,10 +51,11 @@ const useTts = () => {
   };
 
   const addMessage = (message) => {
-    setMessageQueue((prev) => new Set(prev).add(message));
+    // setMessageQueue((prev) => new Set(prev).add(message));
+    debounceTts(message);
   };
 
-  return { addMessage };
+  return { addMessage, tts };
 
 
 };

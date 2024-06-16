@@ -11,6 +11,14 @@ import {
 } from "../utils/segmentationFunctions";
 import { createColoredTensor, drawMask } from "../utils/drawFunctions";
 import {useTts} from './ttsHook';
+function isCloseToCenter(frameCenter, bboxCenter) {
+  const distance = Math.sqrt(
+    Math.pow(frameCenter.x - bboxCenter.x, 2) +
+      Math.pow(frameCenter.y - bboxCenter.y, 2)
+  );
+  const threshold = 150;
+  return distance < threshold;
+}
 const useSegmentation = (
   modelPath,
   maskThreshold = 0.5,
@@ -18,6 +26,7 @@ const useSegmentation = (
   squareThreshold = 5000
 ) => {
   const [model, setModel] = useState(null);
+  const {addMessage} = useTts();
 
   useEffect(() => {
     tf.loadLayersModel(process.env.PUBLIC_URL + modelPath)
@@ -118,6 +127,21 @@ const useSegmentation = (
         let coloredTensor = null;
         const centroidY = res.centerOfMass[1];
         const centroidX = res.centerOfMass[0];
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        const frameCenter = { x: width / 2, y: height / 2 };
+        const boxCenter = { x:  centroidX/ 2, y: centroidY / 2 };
+
+        // if(centroidY > centerY + centerY*0.2) {
+        // if(res.isValidCenter) {
+        //   console.log("safepath")
+        // }
+        if(isCloseToCenter(frameCenter, boxCenter) && res.isValidCenter) {
+         
+        } else {
+          addMessage("road ended")
+        }
 
         if (res.shapes) {
           coloredTensor = createColoredTensor(
@@ -162,14 +186,7 @@ const useDetection = () => {
     loadModel();
   }, []);
 
-  function isCloseToCenter(frameCenter, bboxCenter) {
-    const distance = Math.sqrt(
-      Math.pow(frameCenter.x - bboxCenter.x, 2) +
-        Math.pow(frameCenter.y - bboxCenter.y, 2)
-    );
-    const threshold = 70;
-    return distance < threshold;
-  }
+
 
   const detect = async (video, width, height) => {
     const errorsArray = [
