@@ -50,8 +50,19 @@ const useTts = () => {
     interval = setInterval(speech, 4000);
   };
 
-  const addMessage = (message) => {
-    // setMessageQueue((prev) => new Set(prev).add(message));
+  const addMessage = (prediction, type) => {
+    let message;
+    if (type === "obstacle") {
+      const messages = [
+        "There is a " + prediction + " in front of you.",
+        "You are walking toward a " + prediction,
+        "There is a " + prediction + " in your way. Please adjust your path.",
+      ];
+      const randomIndex = Math.floor(Math.random() * messages.length);
+      message = messages[randomIndex];
+    } else {
+      message = "Sidewalk might be ended please be careful";
+    }
     debounceTts(message);
   };
 

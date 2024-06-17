@@ -1,7 +1,7 @@
 import React from "react";
 // import DetectModel from "./Components/DetectModel";
 import Segmentation from "./Components/Segmentation";
-import Demo from "./Components/Demo";
+import Core from "./Components/Core";
 import Navbar from "./Components/Navbar"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
@@ -12,8 +12,8 @@ const App = () => {
     <div>
       <Navbar />
       <Routes>
-        <Route path="/visual" element={<Segmentation />} />
-        <Route path="/demo" element={<Demo />} />
+        <Route path="/demo" element={<Core mode="Demo" />} />       
+         <Route path="/visual" element={<Core mode="Visual" />} />
       </Routes>
     </div>
   );

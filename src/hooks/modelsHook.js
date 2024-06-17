@@ -10,15 +10,16 @@ import {
   checkShapesSize,
 } from "../utils/segmentationFunctions";
 import { createColoredTensor, drawMask } from "../utils/drawFunctions";
-import {useTts} from './ttsHook';
-function isCloseToCenter(frameCenter, bboxCenter) {
+import { useTts } from './ttsHook';
+
+const isCloseToCenter = (frameCenter, bboxCenter, threshold) => {
   const distance = Math.sqrt(
     Math.pow(frameCenter.x - bboxCenter.x, 2) +
-      Math.pow(frameCenter.y - bboxCenter.y, 2)
+    Math.pow(frameCenter.y - bboxCenter.y, 2)
   );
-  const threshold = 150;
   return distance < threshold;
 }
+
 const useSegmentation = (
   modelPath,
   maskThreshold = 0.5,
@@ -26,7 +27,7 @@ const useSegmentation = (
   squareThreshold = 5000
 ) => {
   const [model, setModel] = useState(null);
-  const {addMessage} = useTts();
+  const { addMessage } = useTts();
 
   useEffect(() => {
     tf.loadLayersModel(process.env.PUBLIC_URL + modelPath)
@@ -125,20 +126,16 @@ const useSegmentation = (
     return start(video).then((res) => {
       return tf.tidy(() => {
         let coloredTensor = null;
-        const centroidY = res.centerOfMass[1];
         const centroidX = res.centerOfMass[0];
+        const centroidY = res.centerOfMass[1];
         const centerX = width / 2;
         const centerY = height / 2;
 
         const frameCenter = { x: width / 2, y: height / 2 };
-        const boxCenter = { x:  centroidX/ 2, y: centroidY / 2 };
+        const boxCenter = { x: centroidX / 2, y: centroidY / 2 };
 
-        // if(centroidY > centerY + centerY*0.2) {
-        // if(res.isValidCenter) {
-        //   console.log("safepath")
-        // }
-        if(isCloseToCenter(frameCenter, boxCenter) && res.isValidCenter) {
-         
+        if (isCloseToCenter(frameCenter, boxCenter, 150) && res.isValidCenter) {
+
         } else {
           addMessage("road ended")
         }
@@ -205,8 +202,9 @@ const useDetection = () => {
       res.forEach((prediction) => {
         const [x, y, w, h] = prediction.bbox;
         const bboxCenter = { x: x + w / 2, y: y + h / 2 };
-        if (isCloseToCenter(frameCenter, bboxCenter)) {
+        if (isCloseToCenter(frameCenter, bboxCenter, 70)) {
           bboxes.push(prediction);
+
         }
       });
       return bboxes;

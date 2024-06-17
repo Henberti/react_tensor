@@ -1,11 +1,11 @@
 import React, { useRef, useEffect, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import { useSegmentation, useDetection } from "../hooks/modelsHook";
-import {useTts} from "../hooks/ttsHook";
+import { useTts } from "../hooks/ttsHook";
 
 
-const App = () => {
-  const { addMessage, tts} = useTts();
+const Core = ({ mode }) => {
+  const { addMessage, tts } = useTts();
   const videoRef = useRef(null);
   const wasRendered = useRef(false);
   const canvas2Ref = useRef();
@@ -26,18 +26,18 @@ const App = () => {
       wasRendered.current = true;
 
       navigator.mediaDevices
-      .getUserMedia({
-        video: isMobile() ? { facingMode: { exact: "environment" } } : true
-      })
-      .then((stream) => {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().then(() => {
-          captureAndPredict();
+        .getUserMedia({
+          video: isMobile() ? { facingMode: { exact: "environment" } } : true
+        })
+        .then((stream) => {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().then(() => {
+            captureAndPredict();
+          });
+        })
+        .catch((error) => {
+          console.error("Error accessing webcam:", error);
         });
-      })
-      .catch((error) => {
-        console.error("Error accessing webcam:", error);
-      });
     }
   }, [model, detectionModel, isStarted]);
 
@@ -86,16 +86,18 @@ const App = () => {
   };
 
   return (
-    <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
-   <button onClick={() => {
-        tts("Started")
-        setIsStarted(true)
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+      <button onClick={() => {
+        tts("Welcome to SafePath, please hold you phone in front of you and start walking.");
+        setIsStarted(true);
+      }}>Start</button>
 
-      }}>Start</button>      <video hidden ref={videoRef} style={{ display: "none" }}></video>
-      <canvas hidden ref={canvas2Ref}></canvas>
-
+      <video ref={videoRef} hidden={mode === "Demo"} style={{ display: "none" }}></video>
+      <canvas ref={canvas2Ref} hidden={mode === "Demo"}></canvas>
     </div>
+
+
   );
 };
 
-export default App;
+export default Core;
