@@ -134,10 +134,11 @@ const useSegmentation = (
         const frameCenter = { x: width / 2, y: height / 2 };
         const boxCenter = { x: centroidX / 2, y: centroidY / 2 };
 
-        if (isCloseToCenter(frameCenter, boxCenter, 150) && res.isValidCenter) {
-
+        if (isCloseToCenter(frameCenter, boxCenter, 350) && res.isValidCenter) {
+          console.log("safe");
         } else {
-          addMessage("road ended")
+          console.log("Not");
+          addMessage("Not Safe", "road");
         }
 
         if (res.shapes) {
@@ -183,8 +184,6 @@ const useDetection = () => {
     loadModel();
   }, []);
 
-
-
   const detect = async (video, width, height) => {
     const errorsArray = [
       model ? "" : "Model is not loaded",
@@ -204,7 +203,6 @@ const useDetection = () => {
         const bboxCenter = { x: x + w / 2, y: y + h / 2 };
         if (isCloseToCenter(frameCenter, bboxCenter, 70)) {
           bboxes.push(prediction);
-
         }
       });
       return bboxes;

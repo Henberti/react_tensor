@@ -55,7 +55,7 @@ const Core = ({ mode }) => {
     const drawFrame = async () => {
       const detection = await detect(video, videoWidth, videoHeight);
       detection.forEach((prediction) => {
-        addMessage(prediction.class);
+        addMessage(prediction.class, "obstacle");
         const [x, y] = prediction.bbox;
         const [width, height] = prediction.bbox.slice(2);
         ctx.strokeStyle = "red";

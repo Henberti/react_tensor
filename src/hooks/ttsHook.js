@@ -1,9 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 
 import tts from '../Components/Tts';
-const messages = [
-  "Sidewalk might be ended please be careful",
-]
+
 
 const useTts = () => {
   const [bounce, setBounce] = useState(false);
