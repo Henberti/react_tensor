@@ -58,8 +58,10 @@ const useTts = () => {
       ];
       const randomIndex = Math.floor(Math.random() * messages.length);
       message = messages[randomIndex];
+    } else if (type === "road") {
+      message = prediction;
     } else {
-      message = "Sidewalk might be ended please be careful";
+      message = prediction;
     }
     debounceTts(message);
   };

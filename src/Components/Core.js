@@ -11,7 +11,7 @@ const Core = ({ mode }) => {
   const canvas2Ref = useRef();
   const [isStarted, setIsStarted] = useState(false);
   const { model, getSegmentation } = useSegmentation(
-    "models/jsconv5/model.json"
+    "models/jsconv8/model.json"
   );
   const { detect, model: detectionModel } = useDetection();
 
@@ -77,7 +77,7 @@ const Core = ({ mode }) => {
       if (!wasRendered.current) return;
       const detection = await detect(video, videoWidth, videoHeight);
       detection.forEach((prediction) => {
-        addMessage(prediction.class, "obstacle");
+        // addMessage(prediction.class, "obstacle");
         const [x, y] = prediction.bbox;
         const [width, height] = prediction.bbox.slice(2);
         ctx.strokeStyle = "red";
@@ -85,6 +85,12 @@ const Core = ({ mode }) => {
         ctx.strokeRect(x, y, width, height);
         ctx.fillStyle = "red";
         ctx.fillText(prediction.class, x, y);
+        const distance = prediction.distance;
+        if (distance <= 1) {
+          addMessage("Stop, there is an obstacle in front of you");
+        } else if (distance > 1 && distance <= 3) {
+          addMessage(prediction.class, "obstacle");
+        }
       });
       tf.tidy(() => {
         tf.tidy(() => {

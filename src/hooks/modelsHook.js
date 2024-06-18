@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import * as tf from "@tensorflow/tfjs";
 import * as cocossd from "@tensorflow-models/coco-ssd";
 import {
@@ -122,6 +122,8 @@ const useSegmentation = (
     }
   };
 
+  const counterRef = useRef(-1)
+
   const getSegmentation = async (ctx, video, height, width) => {
     return start(video).then((res) => {
       return tf.tidy(() => {
@@ -131,15 +133,23 @@ const useSegmentation = (
         const centerX = width / 2;
         const centerY = height / 2;
 
-        const frameCenter = { x: width / 2, y: height / 2 };
-        const boxCenter = { x: centroidX / 2, y: centroidY / 2 };
-
-        if (isCloseToCenter(frameCenter, boxCenter, 350) && res.isValidCenter) {
-          console.log("safe");
-        } else {
-          console.log("Not");
-          addMessage("Not Safe", "road");
+        if(res.isValidCenter && counterRef.current < 10){
+          counterRef.current++;
         }
+        else if(!res.isValidCenter && counterRef.current >0){
+          counterRef.current--
+        }
+
+        if(counterRef.current ===10){
+          addMessage('Safe path detected')
+        }
+        else if(counterRef.current === 0){
+          addMessage('road might be ended please be careful')
+        }
+
+        
+
+       
 
         if (res.shapes) {
           coloredTensor = createColoredTensor(
@@ -173,6 +183,12 @@ const useSegmentation = (
   return { model, start, getSegmentation };
 };
 
+const estimateDistance = (pixelHeight) => {
+  if (pixelHeight > 400) return 1; // Very close (around 1 meter)
+  if (pixelHeight > 150) return 3; // Close (around 3 meters)
+  return 5; // Far (5 meters or more)
+};
+
 const useDetection = () => {
   const [model, setModel] = useState(null);
 
@@ -201,6 +217,8 @@ const useDetection = () => {
       res.forEach((prediction) => {
         const [x, y, w, h] = prediction.bbox;
         const bboxCenter = { x: x + w / 2, y: y + h / 2 };
+        const distance = estimateDistance(h);
+        prediction.distance = distance;
         if (isCloseToCenter(frameCenter, bboxCenter, 70)) {
           bboxes.push(prediction);
         }
