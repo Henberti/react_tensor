@@ -5,7 +5,7 @@ import { useTts } from "../hooks/ttsHook";
 import Button from "./Button";
 
 const Core = ({ mode }) => {
-  const { addMessage, tts } = useTts();
+  const { addMessage, Tts } = useTts();
   const videoRef = useRef(null);
   const wasRendered = useRef(false);
   const canvas2Ref = useRef();
@@ -87,7 +87,7 @@ const Core = ({ mode }) => {
         ctx.fillText(prediction.class, x, y);
         const distance = prediction.distance;
         if (distance <= 1) {
-          addMessage("Stop, there is an obstacle in front of you");
+          addMessage("Stop, there is a " + prediction.class + " in front of you", "alert", true);
         } else if (distance > 1 && distance <= 3) {
           addMessage(prediction.class, "obstacle");
         }
@@ -116,7 +116,7 @@ const Core = ({ mode }) => {
 
   const onToggle = (operation) => {
     if (operation === 1) {
-      tts(
+      Tts(
         "Welcome to SafePath, please hold your phone in front of you and start walking."
       );
     }
@@ -133,7 +133,7 @@ const Core = ({ mode }) => {
         alignItems: "center",
       }}
     >
-      <Button onClick={onToggle} />
+      <Button onClick={(onToggle)} />
 
       <video
         ref={videoRef}

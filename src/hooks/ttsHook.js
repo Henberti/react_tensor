@@ -1,12 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-
-import tts from '../Components/Tts';
-
+import Tts from '../Components/Tts';
 
 const useTts = () => {
   const [bounce, setBounce] = useState(false);
   const [messageQueue, setMessageQueue] = useState(new Set());
   const lastTtsCall = useRef(Date.now());
+  const currentMessage = useRef("");
 
   useEffect(() => {
     if (messageQueue.size === 0) return;
@@ -22,10 +21,13 @@ const useTts = () => {
   let voices = window.speechSynthesis.getVoices();
   const voice = voices[6];
 
-  const debounceTts = (message) => {
+  const debounceTts = (message, interrupt = false) => {
     const now = Date.now();
-    if (now - lastTtsCall.current > 3000) {
-      tts(message);
+    if ((now - lastTtsCall.current > 3000 || interrupt) && message !== currentMessage.current) {
+      if (interrupt) {
+        currentMessage.current = message;
+      }
+      Tts(message, voice, interrupt);
       lastTtsCall.current = now;
     }
   };
@@ -37,7 +39,9 @@ const useTts = () => {
     let interval = null;
 
     const speech = () => {
-      tts(_messages.shift());
+      const nextMessage = _messages.shift();
+      currentMessage.current = nextMessage;
+      Tts(nextMessage, voice);
       if (_messages.length === 0) {
         clearInterval(interval);
         setBounce(false);
@@ -48,7 +52,7 @@ const useTts = () => {
     interval = setInterval(speech, 4000);
   };
 
-  const addMessage = (prediction, type) => {
+  const addMessage = (prediction, type, critical = false) => {
     let message;
     if (type === "obstacle") {
       const messages = [
@@ -63,11 +67,10 @@ const useTts = () => {
     } else {
       message = prediction;
     }
-    debounceTts(message);
+    debounceTts(message, critical);
   };
 
-  return { addMessage, tts };
-
-
+  return { addMessage, Tts };
 };
+
 export { useTts };

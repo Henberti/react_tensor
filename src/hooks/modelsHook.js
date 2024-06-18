@@ -180,9 +180,9 @@ const useSegmentation = (
 };
 
 const estimateDistance = (pixelHeight) => {
-  if (pixelHeight > 400) return 1; // Very close (around 1 meter)
-  if (pixelHeight > 150) return 3; // Close (around 3 meters)
-  return 5; // Far (5 meters or more)
+  if (pixelHeight > 400) return 1; 
+  if (pixelHeight > 150) return 3; 
+  return 5; 
 };
 
 const useDetection = () => {
