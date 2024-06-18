@@ -25,6 +25,7 @@ const Core = ({ mode }) => {
 
     if (isStarted) {
       wasRendered.current = true;
+      
 
       if (
         canvas2Ref.current &&
@@ -64,12 +65,12 @@ const Core = ({ mode }) => {
 
   const captureAndPredict = async () => {
     if (!videoRef.current || !model) return;
-
+    let detectionArray = [];
     const video = videoRef.current;
     const canvas2 = canvas2Ref.current;
     const ctx = canvas2.getContext("2d");
 
- 
+
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
 
@@ -86,10 +87,14 @@ const Core = ({ mode }) => {
         ctx.fillStyle = "red";
         ctx.fillText(prediction.class, x, y);
         const distance = prediction.distance;
-        if (distance <= 1) {
-          addMessage("Stop, there is a " + prediction.class + " in front of you", "alert", true);
-        } else if (distance > 1 && distance <= 3) {
-          addMessage(prediction.class, "obstacle");
+        if (!detectionArray.includes(prediction.class)) {
+          if (distance <= 1) {
+            addMessage("Stop, there is a " + prediction.class + " in front of you", "alert", true);
+            detectionArray.push(prediction.class);
+          } else if (distance > 1 && distance <= 3) {
+            addMessage(prediction.class, "obstacle");
+            detectionArray.push(prediction.class);
+          }
         }
       });
       tf.tidy(() => {
