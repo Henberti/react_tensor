@@ -69,7 +69,7 @@ const Core = ({ mode }) => {
     const canvas2 = canvas2Ref.current;
     const ctx = canvas2.getContext("2d");
 
-    await detect(video, video.vi);
+ 
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
 

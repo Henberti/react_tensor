@@ -23,8 +23,8 @@ function DetectModel() {
     }
   };
 
-  const _width = Math.min(640, window.innerWidth);
-  const _height = Math.min(480, window.innerHeight);
+  const _width = Math.min(640, window.innerWidth-50);
+  const _height = Math.min(480, window.innerHeight-50);
 
   const videoConstraints = {
     width: _width,
