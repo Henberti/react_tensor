@@ -10,6 +10,7 @@ const Core = ({ mode }) => {
   const wasRendered = useRef(false);
   const canvas2Ref = useRef();
   const [isStarted, setIsStarted] = useState(false);
+  const detectionArray = useRef([]);
   const { model, getSegmentation } = useSegmentation(
     "models/jsconv8/model.json"
   );
@@ -25,7 +26,6 @@ const Core = ({ mode }) => {
 
     if (isStarted) {
       wasRendered.current = true;
-      
 
       if (
         canvas2Ref.current &&
@@ -49,7 +49,7 @@ const Core = ({ mode }) => {
           console.error("Error accessing webcam:", error);
         });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, detectionModel, isStarted]);
 
   useEffect(() => {
@@ -66,11 +66,10 @@ const Core = ({ mode }) => {
 
   const captureAndPredict = async () => {
     if (!videoRef.current || !model) return;
-    let detectionArray = [];
+
     const video = videoRef.current;
     const canvas2 = canvas2Ref.current;
     const ctx = canvas2.getContext("2d");
-
 
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
@@ -88,13 +87,31 @@ const Core = ({ mode }) => {
         ctx.fillStyle = "red";
         ctx.fillText(prediction.class, x, y);
         const distance = prediction.distance;
-        if (!detectionArray.includes(prediction.class)) {
+        if (!detectionArray.current.includes(prediction.class)) {
           if (distance <= 1) {
-            addMessage("Stop, there is a " + prediction.class + " in front of you", "alert", true);
-            detectionArray.push(prediction.class);
+            addMessage(
+              "Stop, there is a " + prediction.class + " in front of you",
+              "alert",
+              true
+            );
+            detectionArray.current.push(prediction.class);
+            setTimeout(() => {
+              detectionArray.current = [
+                ...detectionArray.current.filter(
+                  (item) => item !== prediction.class
+                ),
+              ];
+            }, [4000]);
           } else if (distance > 1 && distance <= 3) {
             addMessage(prediction.class, "obstacle");
-            detectionArray.push(prediction.class);
+            detectionArray.current.push(prediction.class);
+            setTimeout(() => {
+              detectionArray.current = [
+                ...detectionArray.current.filter(
+                  (item) => item !== prediction.class
+                ),
+              ];
+            }, [4000]);
           }
         }
       });
@@ -139,7 +156,7 @@ const Core = ({ mode }) => {
         alignItems: "center",
       }}
     >
-      <Button onClick={(onToggle)} />
+      <Button onClick={onToggle} />
 
       <video
         ref={videoRef}

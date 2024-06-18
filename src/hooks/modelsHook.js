@@ -143,7 +143,7 @@ const useSegmentation = (
             ? "right"
             : "center";
 
-        if (isSafePath && positionPath.current !== roadPosition) {
+        if (isSafePath.current && positionPath.current !== roadPosition) {
           switch (roadPosition) {
             case "left":
               addMessage("safe path is on your left", "road");
@@ -162,19 +162,18 @@ const useSegmentation = (
           isSafePath.current = false;
           counterRef.current = -1;
         } else {
-          if (res.isValidCenter && counterRef.current < 10) {
+          if (res.isValidCenter && counterRef.current < 10 && !isCentroidHigher) {
             counterRef.current++;
           } else if (!res.isValidCenter && counterRef.current > 0) {
             counterRef.current--;
           }
-        }
-        
-        if (counterRef.current === 10 && !isSafePath.current) {
-          addMessage("Safe path detected", "road");
-          isSafePath.current = true;
-        } else if (counterRef.current === 0 && isSafePath.current) {
-          addMessage("road might be ended please be careful", "road", true);
-          isSafePath.current = false;
+          if (counterRef.current === 10 && !isSafePath.current) {
+            addMessage("Safe path detected", "road");
+            isSafePath.current = true;
+          } else if (counterRef.current === 0 && isSafePath.current) {
+            addMessage("road might be ended please be careful", "road", true);
+            isSafePath.current = false;
+          }
         }
 
         if (res.shapes) {
