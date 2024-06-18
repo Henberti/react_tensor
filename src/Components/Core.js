@@ -49,6 +49,7 @@ const Core = ({ mode }) => {
           console.error("Error accessing webcam:", error);
         });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, detectionModel, isStarted]);
 
   useEffect(() => {
