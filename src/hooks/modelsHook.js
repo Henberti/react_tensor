@@ -133,23 +133,19 @@ const useSegmentation = (
         const centerX = width / 2;
         const centerY = height / 2;
 
-        if(res.isValidCenter && counterRef.current < 10){
+        if (res.isValidCenter && counterRef.current < 10) {
           counterRef.current++;
         }
-        else if(!res.isValidCenter && counterRef.current >0){
+        else if (!res.isValidCenter && counterRef.current > 0) {
           counterRef.current--
         }
 
-        if(counterRef.current ===10){
+        if (counterRef.current === 10) {
           addMessage('Safe path detected')
         }
-        else if(counterRef.current === 0){
+        else if (counterRef.current === 0) {
           addMessage('road might be ended please be careful')
         }
-
-        
-
-       
 
         if (res.shapes) {
           coloredTensor = createColoredTensor(
