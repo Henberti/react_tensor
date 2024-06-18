@@ -26,7 +26,11 @@ const Core = ({ mode }) => {
     if (isStarted) {
       wasRendered.current = true;
 
-      if (canvas2Ref.current && canvas2Ref.current.style.display === "none") {
+      if (
+        canvas2Ref.current &&
+        canvas2Ref.current.style.display === "none" &&
+        mode === "Visual"
+      ) {
         canvas2Ref.current.style.display = "block";
       }
 
@@ -105,9 +109,12 @@ const Core = ({ mode }) => {
   };
 
   const onToggle = (operation) => {
-    tts(
-      "Welcome to SafePath, please hold your phone in front of you and start walking."
-    );
+    if (operation === 1) {
+      tts(
+        "Welcome to SafePath, please hold your phone in front of you and start walking."
+      );
+    }
+
     setIsStarted(operation === 1);
   };
 

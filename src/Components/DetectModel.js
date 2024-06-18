@@ -23,9 +23,12 @@ function DetectModel() {
     }
   };
 
+  const _width = Math.min(640, window.innerWidth);
+  const _height = Math.min(480, window.innerHeight);
+
   const videoConstraints = {
-    width: 640,
-    height: 480,
+    width: _width,
+    height: _height,
     facingMode: "environment",
   };
 
@@ -91,13 +94,14 @@ function DetectModel() {
         const [x, y, width, height] = prediction.bbox;
         const bboxCenter = { x: x + width / 2, y: y + height / 2 };
 
-
         // Draw bounding boxes if the object is close to the center and threshold met
         if (isCloseToCenter(frameCenter, bboxCenter)) {
           const messages = [
             "There is a " + prediction.class + " in front of you.",
             "You are walking toward a " + prediction.class,
-            "There is a " + prediction.class + " in your way. Please adjust your path.",
+            "There is a " +
+              prediction.class +
+              " in your way. Please adjust your path.",
           ];
           const randomIndex = Math.floor(Math.random() * messages.length);
           const message = messages[randomIndex];
@@ -109,14 +113,17 @@ function DetectModel() {
   };
 
   function isCloseToCenter(frameCenter, bboxCenter) {
-    const distance = Math.sqrt(Math.pow(frameCenter.x - bboxCenter.x, 2) + Math.pow(frameCenter.y - bboxCenter.y, 2));
+    const distance = Math.sqrt(
+      Math.pow(frameCenter.x - bboxCenter.x, 2) +
+        Math.pow(frameCenter.y - bboxCenter.y, 2)
+    );
     const threshold = 70;
     return distance < threshold;
   }
 
   useEffect(() => {
     if (started) runCoco();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started]);
 
   return (

@@ -45,7 +45,6 @@ function createColoredTensor(shapes, height, width, centeredX, centeredY) {
   return coloredTensorBuffer.toTensor().mul(255);
 }
 
-
 const drawFilledSquare = (ctx, x, y, size, color) => {
   ctx.fillStyle = color;
   ctx.fillRect(x, y, size, size);
@@ -62,10 +61,10 @@ const blendTensors = (tensorA, tensorB, alpha) => {
     return blendedTensor;
   });
 };
-const addAlphaChannel = (rgbTensor, alphaChannel) => {
+const addAlphaChannel = (rgbTensor, alphaChannel, width, height) => {
   return tf.tidy(() => {
     // Ensure the alpha channel has shape [480, 640, 1]
-    const alphaChannelReshaped = alphaChannel.reshape([480, 640, 1]);
+    const alphaChannelReshaped = alphaChannel.reshape([height, width, 1]);
 
     // Concatenate along the last axis to form the RGBA tensor
     const rgbaTensor = tf.concat([rgbTensor, alphaChannelReshaped], -1);
@@ -89,12 +88,11 @@ const drawMask = (
   const alphaChannel = mask2d.mul(127).add(128);
   const Xmin = Math.max(xStart - detectionBoundaryBox, 0);
 
-
   const Ymin = Math.max(yStart - detectionBoundaryBox, 0);
   if (isValidCenter) {
     drawFilledSquare(ctx, xStart, yStart, 20, "green");
   }
-  drawBoundingBox(ctx, Xmin, Ymin, 200, isValidCenter?"green": 'yellow');
+  drawBoundingBox(ctx, Xmin, Ymin, 200, isValidCenter ? "green" : "yellow");
   drawFilledSquare(
     ctx,
     Math.round(width / 2),
@@ -106,8 +104,8 @@ const drawMask = (
   if (coloredTensor) {
     t2 = blendTensors(t2, coloredTensor, 0.5);
   }
-  const ttt2 = addAlphaChannel(t2, alphaChannel);
-  
+  const ttt2 = addAlphaChannel(t2, alphaChannel, width, height);
+
   return ttt2;
 };
 
