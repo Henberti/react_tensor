@@ -11,7 +11,7 @@ const App = () => {
   const canvas2Ref = useRef();
   const [isStarted, setIsStarted] = useState(false);
   const { model, getSegmentation } = useSegmentation(
-    "models/jsconv5/model.json"
+    "models/jsconv8/model.json"
   );
   const { detect, model: detectionModel } = useDetection();
   function isMobile() {

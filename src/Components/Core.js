@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import { useSegmentation, useDetection } from "../hooks/modelsHook";
 import { useTts } from "../hooks/ttsHook";
-
+import Button from "./Button";
 
 const Core = ({ mode }) => {
   const { addMessage, tts } = useTts();
@@ -14,20 +14,25 @@ const Core = ({ mode }) => {
     "models/jsconv5/model.json"
   );
   const { detect, model: detectionModel } = useDetection();
+
   function isMobile() {
     return /Mobi|Android/i.test(navigator.userAgent);
   }
+
   useEffect(() => {
-    if (!model || !videoRef.current) return;
-    if (!detectionModel) return;
-    if (wasRendered.current) return;
+    if (!model || !videoRef.current || !detectionModel || wasRendered.current)
+      return;
 
     if (isStarted) {
       wasRendered.current = true;
 
+      if (canvas2Ref.current && canvas2Ref.current.style.display === "none") {
+        canvas2Ref.current.style.display = "block";
+      }
+
       navigator.mediaDevices
         .getUserMedia({
-          video: isMobile() ? { facingMode: { exact: "environment" } } : true
+          video: isMobile() ? { facingMode: { exact: "environment" } } : true,
         })
         .then((stream) => {
           videoRef.current.srcObject = stream;
@@ -41,6 +46,18 @@ const Core = ({ mode }) => {
     }
   }, [model, detectionModel, isStarted]);
 
+  useEffect(() => {
+    if (!isStarted && wasRendered.current) {
+      videoRef.current.srcObject.getTracks().forEach((track) => {
+        track.stop();
+      });
+      wasRendered.current = false;
+      if (canvas2Ref.current) {
+        canvas2Ref.current.style.display = "none";
+      }
+    }
+  }, [isStarted]);
+
   const captureAndPredict = async () => {
     if (!videoRef.current || !model) return;
 
@@ -53,6 +70,7 @@ const Core = ({ mode }) => {
     const videoHeight = video.videoHeight;
 
     const drawFrame = async () => {
+      if (!wasRendered.current) return;
       const detection = await detect(video, videoWidth, videoHeight);
       detection.forEach((prediction) => {
         addMessage(prediction.class, "obstacle");
@@ -78,25 +96,39 @@ const Core = ({ mode }) => {
             });
         });
       });
-
-      requestAnimationFrame(drawFrame);
+      if (isStarted) {
+        requestAnimationFrame(drawFrame);
+      }
     };
 
     drawFrame();
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-      <button onClick={() => {
-        tts("Welcome to SafePath, please hold you phone in front of you and start walking.");
-        setIsStarted(true);
-      }}>Start</button>
+  const onToggle = (operation) => {
+    tts(
+      "Welcome to SafePath, please hold your phone in front of you and start walking."
+    );
+    setIsStarted(operation === 1);
+  };
 
-      <video ref={videoRef} hidden={mode === "Demo"} style={{ display: "none" }}></video>
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Button onClick={onToggle} />
+
+      <video
+        ref={videoRef}
+        hidden={mode === "Demo"}
+        style={{ display: "none" }}
+      ></video>
       <canvas ref={canvas2Ref} hidden={mode === "Demo"}></canvas>
     </div>
-
-
   );
 };
 
