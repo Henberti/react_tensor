@@ -10,15 +10,15 @@ import {
   checkShapesSize,
 } from "../utils/segmentationFunctions";
 import { createColoredTensor, drawMask } from "../utils/drawFunctions";
-import { useTts } from './ttsHook';
+import { useTts } from "./ttsHook";
 
 const isCloseToCenter = (frameCenter, bboxCenter, threshold) => {
   const distance = Math.sqrt(
     Math.pow(frameCenter.x - bboxCenter.x, 2) +
-    Math.pow(frameCenter.y - bboxCenter.y, 2)
+      Math.pow(frameCenter.y - bboxCenter.y, 2)
   );
   return distance < threshold;
-}
+};
 
 const useSegmentation = (
   modelPath,
@@ -122,7 +122,9 @@ const useSegmentation = (
     }
   };
 
-  const counterRef = useRef(-1)
+  const counterRef = useRef(-1);
+  const isSafePath = useRef(false);
+  const positionPath = useRef("");
 
   const getSegmentation = async (ctx, video, height, width) => {
     return start(video).then((res) => {
@@ -133,18 +135,46 @@ const useSegmentation = (
         const centerX = width / 2;
         const centerY = height / 2;
 
-        if (res.isValidCenter && counterRef.current < 10) {
-          counterRef.current++;
-        }
-        else if (!res.isValidCenter && counterRef.current > 0) {
-          counterRef.current--
+        const isCentroidHigher = centroidY < centerY + centerY * 0.2;
+        const roadPosition =
+          centroidX < centerX - centerX * 0.4
+            ? "left"
+            : centroidX > centerX + centerX * 0.4
+            ? "right"
+            : "center";
+
+        if (isSafePath && positionPath.current !== roadPosition) {
+          switch (roadPosition) {
+            case "left":
+              addMessage("safe path is on your left", "road");
+              break;
+            case "right":
+              addMessage("safe path is on your right", "road");
+              break;
+            default:
+              addMessage("safe path is in front of you", "road");
+              break;
+          }
         }
 
-        if (counterRef.current === 10) {
-          addMessage('Safe path detected')
+        if (isCentroidHigher && isSafePath.current) {
+          addMessage("road ended please adjust your path", "road", true);
+          isSafePath.current = false;
+          counterRef.current = -1;
+        } else {
+          if (res.isValidCenter && counterRef.current < 10) {
+            counterRef.current++;
+          } else if (!res.isValidCenter && counterRef.current > 0) {
+            counterRef.current--;
+          }
         }
-        else if (counterRef.current === 0) {
-          addMessage('road might be ended please be careful')
+        
+        if (counterRef.current === 10 && !isSafePath.current) {
+          addMessage("Safe path detected", "road");
+          isSafePath.current = true;
+        } else if (counterRef.current === 0 && isSafePath.current) {
+          addMessage("road might be ended please be careful", "road", true);
+          isSafePath.current = false;
         }
 
         if (res.shapes) {
@@ -180,9 +210,9 @@ const useSegmentation = (
 };
 
 const estimateDistance = (pixelHeight) => {
-  if (pixelHeight > 400) return 1; 
-  if (pixelHeight > 150) return 3; 
-  return 5; 
+  if (pixelHeight > 400) return 1;
+  if (pixelHeight > 150) return 3;
+  return 5;
 };
 
 const useDetection = () => {
