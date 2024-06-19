@@ -102,7 +102,7 @@ const Core = ({ mode }) => {
         }
       });
     
-      tf.tidy(() => getSegmentationAndDraw());
+      tf.tidy(() => {getSegmentationAndDraw()});
     
       if (isStarted) {
         await tf.nextFrame();

@@ -167,12 +167,15 @@ const useSegmentation = (
         if (isSafePath.current && positionPath.current !== roadPosition) {
           switch (roadPosition) {
             case "left":
+              positionPath.current = "left";
               addMessage("safe path is on your left", "road");
               break;
             case "right":
+              positionPath.current = "right";
               addMessage("safe path is on your right", "road");
               break;
             default:
+              positionPath.current = "center";
               addMessage("safe path is in front of you", "road");
               break;
           }
