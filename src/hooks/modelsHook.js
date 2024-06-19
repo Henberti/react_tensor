@@ -33,6 +33,7 @@ const useSegmentation = (
     tf.loadLayersModel(process.env.PUBLIC_URL + modelPath)
       .then((loadedModel) => {
         console.log("Model loaded successfully:", loadedModel);
+        alert("Model loaded successfully");
         setModel(loadedModel);
       })
       .catch((error) => {

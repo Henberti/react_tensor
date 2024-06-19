@@ -78,9 +78,9 @@ const Core = ({ mode }) => {
     const drawFrame = async () => {
 
       if (!wasRendered.current) return;
+    
       const detection = await detect(video, videoWidth, videoHeight);
       detection.forEach((prediction) => {
-        // addMessage(prediction.class, "obstacle");
         const [x, y] = prediction.bbox;
         const [width, height] = prediction.bbox.slice(2);
         ctx.strokeStyle = "red";
@@ -88,6 +88,7 @@ const Core = ({ mode }) => {
         ctx.strokeRect(x, y, width, height);
         ctx.fillStyle = "red";
         ctx.fillText(prediction.class, x, y);
+    
         const distance = prediction.distance;
         if (!detectionArray.current.includes(prediction.class) && objects.includes(prediction.class)) {
           if (distance <= 1) {
@@ -98,46 +99,45 @@ const Core = ({ mode }) => {
             );
             detectionArray.current.push(prediction.class);
             setTimeout(() => {
-              detectionArray.current = [
-                ...detectionArray.current.filter(
-                  (item) => item !== prediction.class
-                ),
-              ];
-            }, [4000]);
+              detectionArray.current = detectionArray.current.filter(
+                (item) => item !== prediction.class
+              );
+            }, 4000);
           } else if (distance > 1 && distance <= 3) {
             addMessage(prediction.class, "obstacle");
             detectionArray.current.push(prediction.class);
             setTimeout(() => {
-              detectionArray.current = [
-                ...detectionArray.current.filter(
-                  (item) => item !== prediction.class
-                ),
-              ];
-            }, [4000]);
+              detectionArray.current = detectionArray.current.filter(
+                (item) => item !== prediction.class
+              );
+            }, 4000);
           }
         }
       });
+    
       tf.tidy(() => {
-        tf.tidy(() => {
-          Promise.all([getSegmentation(ctx, video, videoHeight, videoWidth,mode==="Visual")])
-            .then(([segmentation]) => {
-              tf.tidy(() => {
-                if(mode!== "Visual") return;
-                tf.browser.toPixels(segmentation.blueMaskUint8, canvas2);
-                tf.dispose(segmentation.blueMaskUint8);
-              });
-            })
-            .catch((error) => {
-              console.error("Error getting segmentation:", error);
+        Promise.all([getSegmentation(ctx, video, videoHeight, videoWidth, mode === "Visual")])
+          .then(([segmentation]) => {
+            if (mode !== "Visual") return;
+            tf.tidy(() => {
+              tf.browser.toPixels(segmentation.blueMaskUint8, canvas2);
+              tf.dispose(segmentation.blueMaskUint8);
             });
-        });
+          })
+          .catch((error) => {
+            console.error("Error getting segmentation:", error);
+          });
       });
+    
       if (isStarted) {
-        requestAnimationFrame(drawFrame);
+        await tf.nextFrame();
+        drawFrame();
       }
     };
-
+    
     drawFrame();
+    
+    
   };
 
   const onToggle = (operation) => {
