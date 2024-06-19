@@ -3,6 +3,7 @@ import * as tf from "@tensorflow/tfjs";
 import { useSegmentation, useDetection } from "../hooks/modelsHook";
 import { useTts } from "../hooks/ttsHook";
 import Button from "./Button";
+import { Divider } from "@mui/material";
 import { PathFinderLoader } from "../Components/Loading";
 
 const Core = ({ mode }) => {
@@ -11,6 +12,8 @@ const Core = ({ mode }) => {
   const wasRendered = useRef(false);
   const canvas2Ref = useRef();
   const [isStarted, setIsStarted] = useState(false);
+  const [selectedCamera, setSelectedCamera] = useState("environment");
+  const [cameras, setCameras] = useState([]);
   const detectionArray = useRef([]);
   const { model, getSegmentation } = useSegmentation("models/jsconv8/model.json");
   const { detect, model: detectionModel } = useDetection();
@@ -19,6 +22,32 @@ const Core = ({ mode }) => {
   function isMobile() {
     return /Mobi|Android/i.test(navigator.userAgent);
   }
+
+  useEffect(() => {
+    const getCameras = async () => {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      setCameras(videoDevices);
+
+      if (isMobile()) {
+        // Try to differentiate front and back cameras
+        const backCamera = videoDevices.find(device => /back|environment/i.test(device.label));
+        const frontCamera = videoDevices.find(device => /front|user/i.test(device.label));
+
+        if (backCamera) {
+          setSelectedCamera(backCamera.deviceId);
+        } else if (frontCamera) {
+          setSelectedCamera(frontCamera.deviceId);
+        } else {
+          setSelectedCamera(videoDevices[0].deviceId);
+        }
+      } else if (videoDevices.length > 0) {
+        setSelectedCamera(videoDevices[0].deviceId);
+      }
+    };
+
+    getCameras();
+  }, []);
 
   useEffect(() => {
     const initializeCamera = async () => {
@@ -33,11 +62,13 @@ const Core = ({ mode }) => {
 
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: isMobile() ? { facingMode: { exact: "environment" } } : true,
+            video: {
+              deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+              facingMode: isMobile() && !selectedCamera ? { exact: "environment" } : undefined,
+            },
           });
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
-     
 
           captureAndPredict();
         } catch (error) {
@@ -47,7 +78,7 @@ const Core = ({ mode }) => {
     };
 
     initializeCamera();
-  }, [model, detectionModel, isStarted]);
+  }, [model, detectionModel, isStarted, selectedCamera]);
 
   useEffect(() => {
     if (!isStarted && wasRendered.current) {
@@ -73,7 +104,7 @@ const Core = ({ mode }) => {
 
     const drawFrame = async () => {
       if (!wasRendered.current) return;
-    
+
       const detection = await detect(video, videoWidth, videoHeight);
       detection.forEach((prediction) => {
         const [x, y] = prediction.bbox;
@@ -83,7 +114,7 @@ const Core = ({ mode }) => {
         ctx.strokeRect(x, y, width, height);
         ctx.fillStyle = "red";
         ctx.fillText(prediction.class, x, y);
-    
+
         const distance = prediction.distance;
         if (!detectionArray.current.includes(prediction.class) && objects.includes(prediction.class)) {
           if (distance <= 1) {
@@ -101,15 +132,15 @@ const Core = ({ mode }) => {
           }
         }
       });
-    
-      tf.tidy(() => {getSegmentationAndDraw()});
-    
+
+      tf.tidy(() => getSegmentationAndDraw());
+
       if (isStarted) {
         await tf.nextFrame();
         drawFrame();
       }
     };
-    
+
     const getSegmentationAndDraw = async () => {
       try {
         const segmentation = await getSegmentation(ctx, video, videoHeight, videoWidth, mode === "Visual");
@@ -120,9 +151,8 @@ const Core = ({ mode }) => {
         console.error("Error getting segmentation:", error);
       }
     };
-    
+
     drawFrame();
-    
   };
 
   const onToggle = (operation) => {
@@ -135,10 +165,39 @@ const Core = ({ mode }) => {
   return !model ? (
     <PathFinderLoader />
   ) : (
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", width: '100%' }}>
+      <div style={{ margin: '10px 0' }}>
+        <select
+          id="cameraSelect"
+          onChange={(e) => setSelectedCamera(e.target.value)}
+          value={selectedCamera}
+        >
+          {isMobile() ? (
+            <>
+              <option value="environment">Back Camera</option>
+              <option value="user">Front Camera</option>
+            </>
+          ) : (
+            cameras.map((camera) => (
+              <option key={camera.deviceId} value={camera.deviceId}>
+                {camera.label || `Camera ${camera.deviceId}`}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+
       {model && <Button onClick={onToggle} />}
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <Divider
+          orientation="horizontal"
+          variant="middle"
+          style={{ width: '50%', height: '1px', backgroundColor: '#000000', margin: '20px 0' }}
+        />
+      </div>
       <video ref={videoRef} hidden={mode === "Demo"} style={{ display: "none" }}></video>
       <canvas ref={canvas2Ref} hidden={mode === "Demo"}></canvas>
+
     </div>
   );
 };
