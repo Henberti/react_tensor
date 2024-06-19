@@ -15,7 +15,7 @@ const Core = ({ mode }) => {
     "models/jsconv8/model.json"
   );
   const { detect, model: detectionModel } = useDetection();
-
+  const objects = ["person", "car", "bicycle", "motorcycle", "chair", "truck", "fire hydrant", "stop sign", "couch", "potted plant", "dining table", "tv",]
   function isMobile() {
     return /Mobi|Android/i.test(navigator.userAgent);
   }
@@ -52,6 +52,7 @@ const Core = ({ mode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, detectionModel, isStarted]);
 
+
   useEffect(() => {
     if (!isStarted && wasRendered.current) {
       videoRef.current.srcObject.getTracks().forEach((track) => {
@@ -75,6 +76,7 @@ const Core = ({ mode }) => {
     const videoHeight = video.videoHeight;
 
     const drawFrame = async () => {
+
       if (!wasRendered.current) return;
       const detection = await detect(video, videoWidth, videoHeight);
       detection.forEach((prediction) => {
@@ -87,7 +89,7 @@ const Core = ({ mode }) => {
         ctx.fillStyle = "red";
         ctx.fillText(prediction.class, x, y);
         const distance = prediction.distance;
-        if (!detectionArray.current.includes(prediction.class)) {
+        if (!detectionArray.current.includes(prediction.class) && objects.includes(prediction.class)) {
           if (distance <= 1) {
             addMessage(
               "Stop, there is a " + prediction.class + " in front of you",
