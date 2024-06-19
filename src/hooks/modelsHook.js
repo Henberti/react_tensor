@@ -126,7 +126,7 @@ const useSegmentation = (
   const isSafePath = useRef(false);
   const positionPath = useRef("");
 
-  const getSegmentation = async (ctx, video, height, width) => {
+  const getSegmentation = async (ctx, video, height, width, visual) => {
     return start(video).then((res) => {
       return tf.tidy(() => {
         let coloredTensor = null;
@@ -175,7 +175,7 @@ const useSegmentation = (
             isSafePath.current = false;
           }
         }
-
+        if(!visual) return;
         if (res.shapes) {
           coloredTensor = createColoredTensor(
             res.shapes,
