@@ -10,12 +10,23 @@ const Core = ({ mode }) => {
   const wasRendered = useRef(false);
   const canvas2Ref = useRef();
   const [isStarted, setIsStarted] = useState(false);
+  const [devices, setDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const detectionArray = useRef([]);
-  const { model, getSegmentation } = useSegmentation(
-    "models/jsconv8/model.json"
-  );
+  const { model, getSegmentation } = useSegmentation("models/jsconv8/model.json");
   const { detect, model: detectionModel } = useDetection();
-  const objects = ["person", "car", "bicycle", "motorcycle", "chair", "truck", "fire hydrant", "stop sign", "couch", "potted plant", "dining table", "tv",]
+  const objects = ["person", "car", "bicycle", "motorcycle", "chair", "truck", "fire hydrant", "stop sign", "couch", "potted plant", "dining table", "tv"];
+
+  useEffect(() => {
+    navigator.mediaDevices.enumerateDevices().then((deviceInfos) => {
+      const videoDevices = deviceInfos.filter(device => device.kind === "videoinput");
+      setDevices(videoDevices);
+      if (videoDevices.length > 0) {
+        setSelectedDeviceId(videoDevices[0].deviceId);
+      }
+    });
+  }, []);
+
   function isMobile() {
     return /Mobi|Android/i.test(navigator.userAgent);
   }
@@ -27,17 +38,13 @@ const Core = ({ mode }) => {
     if (isStarted) {
       wasRendered.current = true;
 
-      if (
-        canvas2Ref.current &&
-        canvas2Ref.current.style.display === "none" &&
-        mode === "Visual"
-      ) {
+      if (canvas2Ref.current && canvas2Ref.current.style.display === "none" && mode === "Visual") {
         canvas2Ref.current.style.display = "block";
       }
 
       navigator.mediaDevices
         .getUserMedia({
-          video: isMobile() ? { facingMode: { exact: "environment" } } : true,
+          video: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined },
         })
         .then((stream) => {
           videoRef.current.srcObject = stream;
@@ -50,8 +57,7 @@ const Core = ({ mode }) => {
         });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, detectionModel, isStarted]);
-
+  }, [model, detectionModel, isStarted, selectedDeviceId]);
 
   useEffect(() => {
     if (!isStarted && wasRendered.current) {
@@ -76,7 +82,6 @@ const Core = ({ mode }) => {
     const videoHeight = video.videoHeight;
 
     const drawFrame = async () => {
-
       if (!wasRendered.current) return;
       const detection = await detect(video, videoWidth, videoHeight);
       detection.forEach((prediction) => {
@@ -119,10 +124,10 @@ const Core = ({ mode }) => {
       });
       tf.tidy(() => {
         tf.tidy(() => {
-          Promise.all([getSegmentation(ctx, video, videoHeight, videoWidth,mode==="Visual")])
+          Promise.all([getSegmentation(ctx, video, videoHeight, videoWidth, mode === "Visual")])
             .then(([segmentation]) => {
               tf.tidy(() => {
-                if(mode!== "Visual") return;
+                if (mode !== "Visual") return;
                 tf.browser.toPixels(segmentation.blueMaskUint8, canvas2);
                 tf.dispose(segmentation.blueMaskUint8);
               });
@@ -151,21 +156,18 @@ const Core = ({ mode }) => {
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+      <div>
+        <label htmlFor="videoSource">Choose Camera:</label>
+        <select id="videoSource" onChange={(e) => setSelectedDeviceId(e.target.value)}>
+          {devices.map(device => (
+            <option key={device.deviceId} value={device.deviceId}>{device.label || `Camera ${device.deviceId}`}</option>
+          ))}
+        </select>
+      </div>
       <Button onClick={onToggle} />
 
-      <video
-        ref={videoRef}
-        hidden={mode === "Demo"}
-        style={{ display: "none" }}
-      ></video>
+      <video ref={videoRef} hidden={mode === "Demo"} style={{ display: "none" }}></video>
       <canvas ref={canvas2Ref} hidden={mode === "Demo"}></canvas>
     </div>
   );
