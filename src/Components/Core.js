@@ -119,9 +119,10 @@ const Core = ({ mode }) => {
       });
       tf.tidy(() => {
         tf.tidy(() => {
-          Promise.all([getSegmentation(ctx, video, videoHeight, videoWidth)])
+          Promise.all([getSegmentation(ctx, video, videoHeight, videoWidth,mode==="Visual")])
             .then(([segmentation]) => {
               tf.tidy(() => {
+                if(mode!== "Visual") return;
                 tf.browser.toPixels(segmentation.blueMaskUint8, canvas2);
                 tf.dispose(segmentation.blueMaskUint8);
               });
