@@ -29,18 +29,38 @@ const useSegmentation = (
   const [model, setModel] = useState(null);
   const { addMessage } = useTts();
 
+  
   useEffect(() => {
-    tf.loadLayersModel(process.env.PUBLIC_URL + modelPath)
-      .then((loadedModel) => {
+    const loadModel = async () => {
+      try {
+        // Check if WebGL is available
+        const webglAvailable = tf.ENV.get('HAS_WEBGL');
+  
+        if (webglAvailable) {
+          await tf.setBackend('webgl');
+        } else {
+          console.warn("WebGL is not supported, falling back to CPU");
+          await tf.setBackend('cpu');
+        }
+  
+        // Log the current backend
+        const currentBackend = tf.getBackend();
+        console.log("Backend: ", currentBackend);
+        tf.setBackend(currentBackend);
+  
+        // Load the model
+        const loadedModel = await tf.loadLayersModel(`${process.env.PUBLIC_URL}/${modelPath}`);
         console.log("Model loaded successfully:", loadedModel);
-        alert("Model loaded successfully");
         setModel(loadedModel);
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("Error loading model:", error);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      }
+    };
+  
+    // Load the model
+    loadModel();
+  }, [modelPath]);
+  
 
   const start = async (video) => {
     const errorsArray = [
